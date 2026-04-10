@@ -77,7 +77,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：标题是否有吸引力 · 风格是否真正差异化（不是换个说法的重复）
+Dimensions: 标题是否有吸引力 · 风格是否真正差异化（不是换个说法的重复）标题是否有吸引力 · 风格是否真正差异化（不是换个说法的重复）
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

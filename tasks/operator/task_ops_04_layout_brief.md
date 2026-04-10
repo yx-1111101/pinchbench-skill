@@ -72,7 +72,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：排版指令是否清晰可执行 · 内容与文章是否对应 · 视觉风格是否统一且符合平台调性
+Dimensions: 排版指令是否清晰可执行 · 内容与文章是否对应 · 视觉风格是否统一且符合平台调性排版指令是否清晰可执行 · 内容与文章是否对应 · 视觉风格是否统一且符合平台调性
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

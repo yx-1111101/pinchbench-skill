@@ -68,7 +68,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：是否符合风格规则 · 论证是否有说服力 · 节奏是否适合口播
+Dimensions: 是否符合风格规则 · 论证是否有说服力 · 节奏是否适合口播是否符合风格规则 · 论证是否有说服力 · 节奏是否适合口播
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

@@ -81,7 +81,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：改写是否忠于原文核心观点 · 钩子是否有吸引力 · 朋友圈是否有个人温度 · 两版风格区分度
+Dimensions: 改写是否忠于原文核心观点 · 钩子是否有吸引力 · 朋友圈是否有个人温度 · 两版风格区分度改写是否忠于原文核心观点 · 钩子是否有吸引力 · 朋友圈是否有个人温度 · 两版风格区分度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

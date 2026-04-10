@@ -93,7 +93,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：意图识别准确率 · 回复语气是否符合品牌调性 · 投诉处理方案是否合理
+Dimensions: 意图识别准确率 · 回复语气是否符合品牌调性 · 投诉处理方案是否合理意图识别准确率 · 回复语气是否符合品牌调性 · 投诉处理方案是否合理
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

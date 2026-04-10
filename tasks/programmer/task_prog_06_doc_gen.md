@@ -2,10 +2,13 @@
 id: task_prog_06_doc_gen
 name: "技术文档生成（docstring + README）"
 category: programmer
-grading_type: llm_judge
+grading_type: hybrid
 timeout_seconds: 150
 workspace_files: []
 dataset_dir: dataset/programmer/task_prog_06_doc_gen
+grading_weights:
+  automated: 0.3
+  llm_judge: 0.7
 ---
 
 ## Prompt
@@ -67,7 +70,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：docstring 准确性 · 示例是否可运行 · README 结构完整度
+Dimensions: docstring 准确性 · 示例是否可运行 · README 结构完整度docstring 准确性 · 示例是否可运行 · README 结构完整度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

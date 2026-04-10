@@ -62,7 +62,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：语气是否符合陈默风格 · 三封风格是否一致 · MSG_03 边界处理是否得体
+Dimensions: 语气是否符合陈默风格 · 三封风格是否一致 · MSG_03 边界处理是否得体语气是否符合陈默风格 · 三封风格是否一致 · MSG_03 边界处理是否得体
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

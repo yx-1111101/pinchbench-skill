@@ -90,7 +90,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：拆分是否符合单一职责 · 命名是否语义清晰 · 整体可读性提升程度
+Dimensions: 拆分是否符合单一职责 · 命名是否语义清晰 · 整体可读性提升程度拆分是否符合单一职责 · 命名是否语义清晰 · 整体可读性提升程度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

@@ -78,7 +78,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：信息时效性 · 爆文拆解是否有洞见 · 启示是否具体可落地
+Dimensions: 信息时效性 · 爆文拆解是否有洞见 · 启示是否具体可落地信息时效性 · 爆文拆解是否有洞见 · 启示是否具体可落地
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

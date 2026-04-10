@@ -72,7 +72,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：判断是否符合 value_map 的逻辑 · 理由是否有陈默式论证 · 边界情境是否正确降级
+Dimensions: 判断是否符合 value_map 的逻辑 · 理由是否有陈默式论证 · 边界情境是否正确降级判断是否符合 value_map 的逻辑 · 理由是否有陈默式论证 · 边界情境是否正确降级
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

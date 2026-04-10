@@ -91,7 +91,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：摘要质量 · 分类是否准确 · 对碎片灵感的处理是否合理
+Dimensions: 摘要质量 · 分类是否准确 · 对碎片灵感的处理是否合理摘要质量 · 分类是否准确 · 对碎片灵感的处理是否合理
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

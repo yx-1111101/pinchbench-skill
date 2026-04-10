@@ -68,7 +68,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：规则是否具体可操作 · 是否真从样本提炼而非泛泛而谈
+Dimensions: 规则是否具体可操作 · 是否真从样本提炼而非泛泛而谈规则是否具体可操作 · 是否真从样本提炼而非泛泛而谈
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

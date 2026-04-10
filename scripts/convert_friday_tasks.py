@@ -142,20 +142,32 @@ def _build_criteria_checklist(criteria_text: str) -> str:
 
 def _build_llm_rubric(criteria_text: str, task_desc: str) -> str:
     """Build an LLM Judge Rubric section from the task description."""
-    llm_line = ""
+    dims_parts: list[str] = []
+    found_judge = False
     for line in criteria_text.split("\n"):
         if "LLM Judge" in line:
-            llm_line = line.strip().lstrip("*- ")
-            break
-    if not llm_line:
-        llm_line = "评价输出的准确性、结构清晰度和实用性"
+            found_judge = True
+            # Extract inline text after ：(if any)
+            m = re.search(r"LLM\s*Judge\*{0,2}[：:]\s*(.*)", line)
+            if m and m.group(1).strip():
+                dims_parts.append(m.group(1).strip())
+            continue
+        if found_judge:
+            stripped = line.strip()
+            if stripped.startswith("- "):
+                dims_parts.append(stripped[2:])
+            elif stripped and not stripped.startswith("**"):
+                dims_parts.append(stripped)
+            else:
+                break
+    dims = " · ".join(dims_parts) if dims_parts else "评价输出的准确性、结构清晰度和实用性"
 
     return textwrap.dedent(f"""\
         ### Quality Assessment
 
         Evaluate the agent's output against the task requirements.
 
-        Dimensions (from task spec): {llm_line}
+        Dimensions: {dims}
 
         **Score 1.0**: Fully meets all requirements with high quality
         **Score 0.75**: Meets most requirements with minor gaps

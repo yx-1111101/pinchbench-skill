@@ -53,7 +53,6 @@ Evaluation criteria:
 def grade(transcript, workspace_path):
     from pathlib import Path
     workspace_path = Path(workspace_path)
-    from pathlib import Path
     pdf = workspace_path / "project_report.pdf"
     pptx = workspace_path / "project_slides.pptx"
     pdf_exists = pdf.exists()
@@ -81,7 +80,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：PDF排版规范度 · PPT结构完整性 · 内容与原始文件的对应准确度
+Dimensions: PDF排版规范度 · PPT结构完整性 · 内容与原始文件的对应准确度PDF排版规范度 · PPT结构完整性 · 内容与原始文件的对应准确度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

@@ -83,7 +83,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：SQL 注入分析是否准确给出修复示例 · 性能建议是否量化 · Review 整体专业度
+Dimensions: SQL 注入分析是否准确给出修复示例 · 性能建议是否量化 · Review 整体专业度SQL 注入分析是否准确给出修复示例 · 性能建议是否量化 · Review 整体专业度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

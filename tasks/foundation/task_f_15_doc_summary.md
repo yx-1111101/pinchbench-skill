@@ -2,10 +2,13 @@
 id: task_f_15_doc_summary
 name: "task_f_15_doc_summary"
 category: foundation
-grading_type: llm_judge
+grading_type: hybrid
 timeout_seconds: 90
 workspace_files: []
 dataset_dir: dataset/foundation/task_f_15_doc_summary
+grading_weights:
+  automated: 0.3
+  llm_judge: 0.7
 ---
 
 ## Prompt

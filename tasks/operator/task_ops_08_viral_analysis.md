@@ -79,7 +79,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：分析是否有洞见（不是复述数据） · 归因是否合理 · 可复制因素是否具体
+Dimensions: 分析是否有洞见（不是复述数据） · 归因是否合理 · 可复制因素是否具体分析是否有洞见（不是复述数据） · 归因是否合理 · 可复制因素是否具体
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

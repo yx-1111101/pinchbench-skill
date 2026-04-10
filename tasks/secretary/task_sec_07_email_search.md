@@ -65,7 +65,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：检索结果相关性 · 信息提取完整度
+Dimensions: 检索结果相关性 · 信息提取完整度检索结果相关性 · 信息提取完整度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

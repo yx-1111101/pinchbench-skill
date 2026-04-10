@@ -71,7 +71,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：热点时效性与真实性 · 选题逻辑是否充分 · 日历建议是否可落地
+Dimensions: 热点时效性与真实性 · 选题逻辑是否充分 · 日历建议是否可落地热点时效性与真实性 · 选题逻辑是否充分 · 日历建议是否可落地
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

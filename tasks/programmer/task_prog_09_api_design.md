@@ -81,7 +81,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：路由设计是否符合 REST 规范 · Schema 是否合理完整 · 与 PRD 需求的覆盖度
+Dimensions: 路由设计是否符合 REST 规范 · Schema 是否合理完整 · 与 PRD 需求的覆盖度路由设计是否符合 REST 规范 · Schema 是否合理完整 · 与 PRD 需求的覆盖度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

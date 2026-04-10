@@ -83,7 +83,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：舆情判断是否合理 · 危机话术是否专业得体 · 品牌声明是否有诚意且不推卸责任
+Dimensions: 舆情判断是否合理 · 危机话术是否专业得体 · 品牌声明是否有诚意且不推卸责任舆情判断是否合理 · 危机话术是否专业得体 · 品牌声明是否有诚意且不推卸责任
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

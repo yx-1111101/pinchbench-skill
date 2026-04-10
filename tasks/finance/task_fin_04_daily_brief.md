@@ -2,10 +2,13 @@
 id: task_fin_04_daily_brief
 name: "多源信息综合 → 每日金融简报"
 category: finance
-grading_type: llm_judge
+grading_type: hybrid
 timeout_seconds: 240
 workspace_files: []
 dataset_dir: dataset/finance/task_fin_04_daily_brief
+grading_weights:
+  automated: 0.3
+  llm_judge: 0.7
 ---
 
 ## Prompt
@@ -63,7 +66,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：信息时效性 · 覆盖完整度 · 分析是否有洞见
+Dimensions: 信息时效性 · 覆盖完整度 · 分析是否有洞见信息时效性 · 覆盖完整度 · 分析是否有洞见
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

@@ -73,7 +73,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：
+Dimensions: 冲突提示是否清晰（说明了是哪个日程冲突）· 替代方案是否合理具体（给出了具体时间段）
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

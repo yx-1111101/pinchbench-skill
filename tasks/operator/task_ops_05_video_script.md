@@ -74,7 +74,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：钩子吸引力 · 建议是否具体可操作 · 风格是否符合 Brief · 整体节奏感
+Dimensions: 钩子吸引力 · 建议是否具体可操作 · 风格是否符合 Brief · 整体节奏感钩子吸引力 · 建议是否具体可操作 · 风格是否符合 Brief · 整体节奏感
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

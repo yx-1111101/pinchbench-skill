@@ -71,7 +71,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：摘要准确性 · 数据提取完整性 · 结构清晰度
+Dimensions: 摘要准确性 · 数据提取完整性 · 结构清晰度摘要准确性 · 数据提取完整性 · 结构清晰度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

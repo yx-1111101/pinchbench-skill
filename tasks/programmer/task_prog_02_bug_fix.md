@@ -94,7 +94,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：根因描述是否准确 · 修复方案是否最优 · 报告是否清晰
+Dimensions: 根因描述是否准确 · 修复方案是否最优 · 报告是否清晰根因描述是否准确 · 修复方案是否最优 · 报告是否清晰
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

@@ -73,7 +73,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**：画像是否有洞见（不是罗列数据） · 用户群是否清晰区分 · 建议是否能直接指导内容策划
+Dimensions: 画像是否有洞见（不是罗列数据） · 用户群是否清晰区分 · 建议是否能直接指导内容策划画像是否有洞见（不是罗列数据） · 用户群是否清晰区分 · 建议是否能直接指导内容策划
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps
