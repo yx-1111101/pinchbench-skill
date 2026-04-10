@@ -1,0 +1,31 @@
+{
+  "positions": [
+    {
+      "code": "600519",
+      "name": "贵州茅台",
+      "cost": 1680,
+      "alert_rules": [
+        {"type": "price_below", "threshold": 1700, "message": "茅台跌破成本价区域"},
+        {"type": "profit_above", "threshold": 0.20, "message": "茅台盈利超20%，考虑止盈"}
+      ]
+    },
+    {
+      "code": "NVDA",
+      "name": "英伟达",
+      "cost": 580,
+      "alert_rules": [
+        {"type": "price_below", "threshold": 600, "message": "英伟达跌破600，注意风险"},
+        {"type": "profit_above", "threshold": 0.50, "message": "英伟达盈利超50%，建议减仓"}
+      ]
+    },
+    {
+      "code": "00700",
+      "name": "腾讯控股",
+      "cost": 320,
+      "alert_rules": [
+        {"type": "price_below", "threshold": 280, "message": "腾讯跌破280，考虑加仓"},
+        {"type": "loss_above", "threshold": 0.15, "message": "腾讯亏损超15%，止损警告"}
+      ]
+    }
+  ]
+}

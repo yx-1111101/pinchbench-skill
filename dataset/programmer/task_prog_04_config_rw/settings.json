@@ -1,0 +1,12 @@
+{
+  "host": "127.0.0.1",
+  "database": {
+    "port": 5432,
+    "name": "app_db"
+  },
+  "log_level": "INFO",
+  "api": {
+    "timeout": 30,
+    "retries": 3
+  }
+}

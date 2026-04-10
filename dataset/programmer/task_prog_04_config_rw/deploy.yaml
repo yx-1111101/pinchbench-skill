@@ -1,0 +1,5 @@
+environment:
+  host: dev.example.com
+  db_url: postgres://localhost:5432/app
+  region: cn-north
+replicas: 2

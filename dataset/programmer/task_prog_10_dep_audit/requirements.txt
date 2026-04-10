@@ -1,0 +1,13 @@
+# 任务管理系统依赖清单
+# 注意：以下版本均为历史遗留，存在已知安全漏洞，请审计后升级
+
+Flask==1.0.2
+Werkzeug==0.15.0
+requests==2.18.0
+Pillow==8.1.0
+SQLAlchemy==1.3.0
+celery==4.3.0
+redis==3.0.0
+cryptography==2.6.0
+urllib3==1.24.0
+Jinja2==2.10.0
