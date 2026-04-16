@@ -1,0 +1,17 @@
+[
+  {
+    "badge_id": "1042",
+    "anomaly_type": "impossible_travel",
+    "description": "Badge 1042 scanned at HQ Building on 2026-03-10 08:05:33 and at Annex Building on 2026-03-10 08:05:58, only 25 seconds apart."
+  },
+  {
+    "badge_id": "2371",
+    "anomaly_type": "after_hours_restricted",
+    "description": "Granted server-room access at D-HQ-SRV-01 (HQ Building - Server Room) on 2026-03-10 02:17:44, outside business hours (Mon-Fri 07:00-19:00)."
+  },
+  {
+    "badge_id": "3819",
+    "anomaly_type": "repeated_denials",
+    "description": "4 denied attempts at D-HQ-MAIN-01 between 2026-03-10 14:22:11 and 2026-03-10 14:23:32 within 10 minutes."
+  }
+]
