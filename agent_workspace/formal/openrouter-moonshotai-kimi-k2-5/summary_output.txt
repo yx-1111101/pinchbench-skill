@@ -1,0 +1,5 @@
+Artificial intelligence is reshaping healthcare by helping clinicians diagnose disease, guide treatment, and manage patient care more effectively. In particular, AI has become highly useful in medical imaging, where deep learning systems can detect issues such as tumors, fractures, and eye diseases with accuracy comparable to experienced specialists.
+
+AI is also speeding up drug discovery and improving predictive care. By analyzing molecular data, health records, genetics, and lifestyle information, AI can help identify drug candidates faster and flag patients at high risk for serious conditions or deterioration, allowing earlier intervention and potentially lower costs.
+
+At the same time, AI in healthcare raises major concerns around privacy, bias, transparency, regulation, and liability. The document argues that the best path forward is to use AI as a support tool for clinicians, combining its analytical strength with human empathy, judgment, and accountability to improve access, outcomes, and efficiency.
