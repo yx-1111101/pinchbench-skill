@@ -33,6 +33,14 @@ from lib_agent import (
     validate_openrouter_model,
 )
 from lib_grading import GradeResult, grade_task
+from lib_paths import (
+    RESULTS_ROOT,
+    agent_model_workspace,
+    normalize_scope,
+    results_model_dir,
+    results_summary_path,
+    results_transcripts_dir,
+)
 from lib_tasks import Task, TaskLoader
 
 
@@ -286,12 +294,18 @@ def _select_task_ids(tasks: List[Task], suite: str) -> Optional[List[str]]:
     return [task_id.strip() for task_id in suite.split(",") if task_id.strip()]
 
 
-def _next_run_id(run_root: Path) -> str:
-    run_root.mkdir(parents=True, exist_ok=True)
-    existing = []
-    for entry in run_root.iterdir():
-        if entry.is_dir() and entry.name.isdigit():
-            existing.append(int(entry.name))
+def _next_run_id(legacy_results_dir: Path, structured_results_root: Path) -> str:
+    """Next numeric id for legacy flat filenames only (`NNNN_model.json`)."""
+    existing: set[int] = set()
+    if legacy_results_dir.exists():
+        for entry in legacy_results_dir.glob("*.json"):
+            prefix = entry.name.split("_", 1)[0]
+            if prefix.isdigit():
+                existing.add(int(prefix))
+    if structured_results_root.exists():
+        for summary_path in structured_results_root.rglob("summary.json"):
+            if summary_path.parent.name.isdigit():
+                existing.add(int(summary_path.parent.name))
     next_id = (max(existing) + 1) if existing else 1
     return f"{next_id:04d}"
 
@@ -619,12 +633,25 @@ def main():
     runner.load_tasks()
 
     model_slug = slugify_model(args.model)
-    run_root = Path("/tmp/pinchbench")
-    run_id = _next_run_id(run_root)
+    run_scope = normalize_scope(os.environ.get("PINCHBENCH_RUN_SCOPE", "formal"))
     skill_dir = skill_root
-    agent_id = f"bench-{model_slug}"
-    # Use a shared workspace for the agent - we'll copy fixtures per task
-    agent_workspace = Path(f"/tmp/pinchbench/{run_id}/agent_workspace")
+    os.environ["PINCHBENCH_MODEL_SLUG"] = model_slug
+    os.environ["PINCHBENCH_RUN_SCOPE"] = run_scope
+
+    if args.output_dir == "results":
+        # Canonical layout: results/<scope>/<model_slug>/summary.json (no run number in path).
+        run_id = model_slug
+        output_dir = results_model_dir(run_scope, model_slug)
+        output_path = results_summary_path(run_scope, model_slug)
+        transcripts_dir = results_transcripts_dir(run_scope, model_slug)
+    else:
+        run_id = _next_run_id(skill_root / "results", RESULTS_ROOT)
+        output_dir = Path(args.output_dir)
+        output_path = output_dir / f"{run_id}_{model_slug}.json"
+        transcripts_dir = output_dir / f"{run_id}_transcripts"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    transcripts_dir.mkdir(parents=True, exist_ok=True)
 
     # Validate model exists before wasting time on tasks
     if args.base_url:
@@ -636,11 +663,14 @@ def main():
             logger.error("❌ %s", exc)
             sys.exit(1)
 
+    agent_id = f"bench-{run_scope}-{model_slug}"
     ensure_agent_exists(
-        agent_id, args.model, agent_workspace,
-        base_url=args.base_url, api_key=args.api_key,
+        agent_id,
+        args.model,
+        agent_model_workspace(run_scope, model_slug),
+        base_url=args.base_url,
+        api_key=args.api_key,
     )
-    cleanup_agent_sessions(agent_id)
 
     task_ids = _select_task_ids(runner.tasks, args.suite)
     results = []
@@ -656,9 +686,7 @@ def main():
 
     # Incremental result writer: builds partial result JSON from completed
     # tasks so external tools can poll progress while the benchmark runs.
-    incremental_dir = Path(args.output_dir)
-    incremental_dir.mkdir(parents=True, exist_ok=True)
-    incremental_path = incremental_dir / f"{run_id}_{model_slug}.json"
+    incremental_path = output_path
 
     def _write_incremental_results():
         task_entries = [
@@ -695,6 +723,7 @@ def main():
             pass
 
     for i, task in enumerate(tasks_to_run, 1):
+        cleanup_agent_sessions(agent_id)
         task_grades = []
         task_results = []
         for run_index in range(runs_per_task):
@@ -716,7 +745,7 @@ def main():
                     run_id=f"{run_id}-{run_index + 1}",
                     timeout_multiplier=args.timeout_multiplier,
                     skill_dir=skill_dir,
-                    output_dir=Path(args.output_dir) / f"{run_id}_transcripts",
+                    output_dir=transcripts_dir,
                     verbose=args.verbose,
                 )
             except Exception as exc:
@@ -811,10 +840,6 @@ def main():
         # results are available while the benchmark is still running.
         _write_incremental_results()
 
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{run_id}_{model_slug}.json"
-
     def _build_and_write_results():
         """Build aggregate result from completed tasks and write to output_path."""
         task_entries = [
@@ -861,8 +886,11 @@ def main():
         try:
             from lib_trend import RunTrendAnalyzer
 
+            trend_results_dir = output_dir
+            if args.output_dir == "results":
+                trend_results_dir = output_dir.parent
             analyzer = RunTrendAnalyzer(
-                results_dir=output_dir,
+                results_dir=trend_results_dir,
                 window=args.trend_window,
                 regression_threshold=args.trend_threshold,
             )

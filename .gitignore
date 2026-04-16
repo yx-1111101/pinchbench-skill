@@ -63,6 +63,7 @@ dmypy.json
 # Project specific
 uv.lock
 results/
+agent_workspace/
 .pinchbench/
 
 # Vultr deployment

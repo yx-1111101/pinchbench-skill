@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import platform
+import shutil
 import stat
 import subprocess
 import time
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib import error, request
 
+from lib_paths import agent_model_workspace, agent_task_workspace
 from lib_tasks import Task
 
 
@@ -161,40 +163,104 @@ def validate_openrouter_model(model_id: str, timeout_seconds: float = 10.0) -> b
 
 
 def _get_agent_workspace(agent_id: str) -> Path | None:
-    """Get the workspace path for an agent from OpenClaw config."""
+    """Get the workspace path for an agent from the local OpenClaw store."""
+    agent_dir = _get_agent_store_dir(agent_id)
+    metadata_path = agent_dir / "agent" / "workspace.json"
+    if metadata_path.exists():
+        try:
+            payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Failed to read workspace metadata for %s: %s", agent_id, exc)
+        else:
+            workspace_dir = payload.get("workspaceDir")
+            if isinstance(workspace_dir, str) and workspace_dir.strip():
+                return Path(workspace_dir)
+    sessions_store = agent_dir / "sessions" / "sessions.json"
+    if not sessions_store.exists():
+        return None
     try:
-        list_result = subprocess.run(
-            ["openclaw", "agents", "list"],
-            capture_output=True,
-            text=True,
-            check=False,
-            shell=USE_SHELL,
-        )
-        if list_result.returncode != 0:
-            return None
+        sessions_payload = json.loads(sessions_store.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Failed to read sessions store for %s: %s", agent_id, exc)
+        return None
+    if not isinstance(sessions_payload, dict):
+        return None
 
-        # Parse the agent list output to find workspace
-        # OpenClaw normalizes colons to dashes and lowercases agent names
-        normalized_id = agent_id.replace(":", "-").lower()
-        lines = list_result.stdout.split("\n")
-        found_agent = False
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith(f"- {agent_id}") or stripped.startswith(f"- {normalized_id}"):
-                found_agent = True
-            elif found_agent and "Workspace:" in line:
-                workspace_str = line.split("Workspace:")[1].strip()
-                # Expand ~ if present
-                if workspace_str.startswith("~/"):
-                    workspace_str = str(Path.home() / workspace_str[2:])
-                return Path(workspace_str)
-            elif found_agent and line.strip().startswith("-"):
-                # Found next agent, stop looking
-                break
+    def _to_path(value: Any) -> Path | None:
+        if not isinstance(value, str) or not value.strip():
+            return None
+        workspace_str = value.strip()
+        if workspace_str.startswith("~/"):
+            workspace_str = str(Path.home() / workspace_str[2:])
+        return Path(workspace_str)
+
+    def _extract_workspace(entry: Any) -> Path | None:
+        if not isinstance(entry, dict):
+            return None
+        direct_path = _to_path(entry.get("workspaceDir"))
+        if direct_path is not None:
+            return direct_path
+        system_report = entry.get("systemPromptReport")
+        if isinstance(system_report, dict):
+            report_path = _to_path(system_report.get("workspaceDir"))
+            if report_path is not None:
+                return report_path
         return None
-    except Exception as exc:
-        logger.warning("Failed to get agent workspace: %s", exc)
-        return None
+
+    normalized_id = agent_id.replace(":", "-").lower()
+    preferred_keys = [
+        f"agent:{agent_id}:main",
+        f"agent:{agent_id}:default",
+        f"agent:{normalized_id}:main",
+        f"agent:{normalized_id}:default",
+    ]
+    for key in preferred_keys:
+        workspace = _extract_workspace(sessions_payload.get(key))
+        if workspace is not None:
+            return workspace
+
+    newest_workspace = None
+    newest_timestamp = -1
+    for entry in sessions_payload.values():
+        workspace = _extract_workspace(entry)
+        if workspace is None or not isinstance(entry, dict):
+            continue
+        updated_at = entry.get("updatedAt")
+        if isinstance(updated_at, (int, float)) and updated_at > newest_timestamp:
+            newest_timestamp = updated_at
+            newest_workspace = workspace
+        elif newest_workspace is None:
+            newest_workspace = workspace
+    return newest_workspace
+
+
+def _remove_agent_store(agent_id: str) -> None:
+    """Remove local agent store directories for an agent."""
+    base_dir = Path.home() / ".openclaw" / "agents"
+    normalized_id = agent_id.replace(":", "-").lower()
+    candidates = [base_dir / agent_id]
+    normalized_dir = base_dir / normalized_id
+    if normalized_dir not in candidates:
+        candidates.append(normalized_dir)
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            shutil.rmtree(path)
+        except OSError as exc:
+            logger.warning("Failed to remove local agent store %s: %s", path, exc)
+
+
+def _write_agent_workspace_metadata(agent_id: str, workspace_dir: Path) -> None:
+    metadata_path = _get_agent_store_dir(agent_id) / "agent" / "workspace.json"
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        metadata_path.write_text(
+            json.dumps({"workspaceDir": str(workspace_dir)}, indent=2),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        logger.warning("Failed to write workspace metadata for %s: %s", agent_id, exc)
 
 
 def ensure_agent_exists(
@@ -219,57 +285,27 @@ def ensure_agent_exists(
     """
     workspace_dir.mkdir(parents=True, exist_ok=True)
 
-    try:
-        list_result = subprocess.run(
-            ["openclaw", "agents", "list"],
+    agent_store_dir = _get_agent_store_dir(agent_id)
+    if (agent_store_dir / "agent").exists():
+        current_workspace = _get_agent_workspace(agent_id)
+        if current_workspace is not None and current_workspace.resolve() == workspace_dir.resolve():
+            logger.info("Agent %s already exists with correct workspace", agent_id)
+            _write_agent_workspace_metadata(agent_id, workspace_dir)
+            return False
+        logger.info(
+            "Agent %s exists with stale workspace (%s != %s), recreating",
+            agent_id,
+            current_workspace,
+            workspace_dir,
+        )
+        subprocess.run(
+            ["openclaw", "agents", "delete", agent_id, "--force"],
             capture_output=True,
             text=True,
             check=False,
             shell=USE_SHELL,
         )
-    except FileNotFoundError:
-        logger.error("openclaw CLI not found while listing agents")
-        return False
-
-    if list_result.returncode == 0:
-        # Check for exact agent ID match — avoid substring false positives
-        # (e.g. "bench-foo-4" matching "bench-foo-4-5" in the output).
-        # Output format is "- <agent_id>" or "- <agent_id> (default)" per line.
-        # OpenClaw normalizes colons to dashes in directory/display names, so
-        # also check the normalized form.
-        existing_agents = set()
-        for line in list_result.stdout.splitlines():
-            line = line.strip()
-            if line.startswith("- "):
-                # Extract agent name: "- bench-foo-4-5" or "- main (default)"
-                name_part = line[2:].split()[0] if line[2:].strip() else ""
-                if name_part:
-                    existing_agents.add(name_part.lower())
-        normalized_id = agent_id.replace(":", "-").lower()
-        if agent_id.lower() in existing_agents or normalized_id in existing_agents:
-            # Agent exists — check if workspace matches
-            current_workspace = _get_agent_workspace(agent_id)
-            if (
-                current_workspace is not None
-                and current_workspace.resolve() == workspace_dir.resolve()
-            ):
-                logger.info("Agent %s already exists with correct workspace", agent_id)
-                return False
-            # Workspace is stale or unknown — delete and recreate
-            delete_name = normalized_id if normalized_id in existing_agents else agent_id
-            logger.info(
-                "Agent %s exists with stale workspace (%s != %s), recreating",
-                agent_id,
-                current_workspace,
-                workspace_dir,
-            )
-            subprocess.run(
-                ["openclaw", "agents", "delete", delete_name, "--force"],
-                capture_output=True,
-                text=True,
-                check=False,
-            shell=USE_SHELL,
-            )
+        _remove_agent_store(agent_id)
 
     logger.info("Creating OpenClaw agent %s", agent_id)
     try:
@@ -298,6 +334,41 @@ def ensure_agent_exists(
         logger.warning(
             "Agent creation returned %s: %s", create_result.returncode, create_result.stderr
         )
+        already_exists_text = f'Agent "{agent_id}" already exists.'
+        if already_exists_text in (create_result.stdout or "") or already_exists_text in (
+            create_result.stderr or ""
+        ):
+            subprocess.run(
+                ["openclaw", "agents", "delete", agent_id, "--force"],
+                capture_output=True,
+                text=True,
+                check=False,
+                shell=USE_SHELL,
+            )
+            _remove_agent_store(agent_id)
+            create_result = subprocess.run(
+                [
+                    "openclaw",
+                    "agents",
+                    "add",
+                    agent_id,
+                    "--model",
+                    model_id,
+                    "--workspace",
+                    str(workspace_dir),
+                    "--non-interactive",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                shell=USE_SHELL,
+            )
+            if create_result.returncode != 0:
+                logger.warning(
+                    "Agent recreation returned %s: %s",
+                    create_result.returncode,
+                    create_result.stderr,
+                )
 
     # Configure models.json for the bench agent
     bench_agent_dir = _get_agent_store_dir(agent_id) / "agent"
@@ -373,6 +444,7 @@ def ensure_agent_exists(
         except OSError as exc:
             logger.warning("Failed to delete sessions.json: %s", exc)
 
+    _write_agent_workspace_metadata(agent_id, workspace_dir)
     return True
 
 
@@ -407,12 +479,21 @@ def prepare_task_workspace(skill_dir: Path, run_id: str, task: Task, agent_id: s
     """
     import shutil
 
-    # Get agent's workspace from agent config
-    workspace = _get_agent_workspace(agent_id)
-    if workspace is None:
-        # Fallback to task-specific workspace if agent workspace not found
-        logger.warning("Could not find agent workspace, using fallback")
-        workspace = Path(f"/tmp/pinchbench/{run_id}/{task.task_id}")
+    # Get agent's workspace from agent config.
+    # In single-agent-per-model mode, OpenClaw writes are scoped to the configured
+    # agent workspaceDir (not subprocess cwd). We keep using that same workspace.
+    workspace_base = _get_agent_workspace(agent_id)
+    if workspace_base is None:
+        # Fallback to model-root workspace so grading path matches OpenClaw writes.
+        logger.warning("Could not find agent workspace metadata, using model workspace fallback")
+        model_slug = os.environ.get("PINCHBENCH_MODEL_SLUG")
+        scope = os.environ.get("PINCHBENCH_RUN_SCOPE", "formal")
+        if model_slug:
+            workspace = agent_model_workspace(scope, model_slug)
+        else:
+            workspace = Path(f"/tmp/pinchbench/{run_id}/{task.task_id}")
+    else:
+        workspace = workspace_base
 
     _BOOTSTRAP_FILES = ["SOUL.md", "BOOTSTRAP.md", "USER.md", "IDENTITY.md", "HEARTBEAT.md", "TOOLS.md"]
 
@@ -451,22 +532,16 @@ def prepare_task_workspace(skill_dir: Path, run_id: str, task: Task, agent_id: s
             logger.error("Workspace file not found: %s", source)
             raise
 
-    # Copy skills from main workspace to benchmark workspace
-    # This enables benchmark agents to use installed skills like nano-pdf
-    main_skills_dir = Path.home() / ".openclaw" / "workspace" / "skills"
-    if main_skills_dir.exists():
-        dest_skills_dir = workspace / "skills"
-        dest_skills_dir.mkdir(parents=True, exist_ok=True)
-        for skill_dir_src in main_skills_dir.iterdir():
-            if skill_dir_src.is_dir():
-                dest_skill_dir = dest_skills_dir / skill_dir_src.name
-                # Copy skill directory
-                import shutil
-
-                if dest_skill_dir.exists():
-                    shutil.rmtree(dest_skill_dir, onerror=_remove_readonly)
-                shutil.copytree(skill_dir_src, dest_skill_dir)
-                logger.info("Copied skill to benchmark workspace: %s", skill_dir_src.name)
+    # [MODIFIED] Removed blanket skill copying logic that was here originally.
+    # The original code copied all skills from ~/.openclaw/workspace/skills/ into
+    # every task's benchmark workspace, regardless of whether the task needed them.
+    # This caused two problems:
+    #   1. Wasted time copying unrelated skills on every task.
+    #   2. Exposed agents to irrelevant tools, potentially confusing their decisions.
+    #      (e.g. task_14_humanizer explicitly tests whether the agent can install a
+    #       skill on its own — pre-copying skills breaks that test.)
+    # If a task genuinely requires a specific skill, declare it in the task's
+    # frontmatter via a `required_skills` field and add copying logic here.
 
     return workspace
 
@@ -859,6 +934,16 @@ def execute_openclaw_task(
     if stderr and "openclaw command not found" in str(stderr):
         status = "error"
 
+    # Use the effective agent workspace path in result payload so downstream
+    # grading always evaluates where artifacts were actually written.
+    effective_workspace = _get_agent_workspace(agent_id) or workspace
+    if effective_workspace.resolve() != workspace.resolve():
+        logger.warning(
+            "Workspace mismatch detected (%s != %s); using effective workspace in result",
+            workspace,
+            effective_workspace,
+        )
+
     # Verbose logging for debugging
     if verbose:
         logger.info("   [VERBOSE] Exit code: %s", exit_code)
@@ -885,15 +970,15 @@ def execute_openclaw_task(
                     logger.info("   [VERBOSE] User message: %s", preview)
 
         # Show workspace files after task
-        if workspace.exists():
+        if effective_workspace.exists():
             logger.info("   [VERBOSE] Workspace files after task:")
-            for f in sorted(workspace.rglob("*")):
+            for f in sorted(effective_workspace.rglob("*")):
                 if f.is_file():
                     try:
                         size = f.stat().st_size
-                        logger.info("      %s (%d bytes)", f.relative_to(workspace), size)
+                        logger.info("      %s (%d bytes)", f.relative_to(effective_workspace), size)
                     except OSError:
-                        logger.info("      %s", f.relative_to(workspace))
+                        logger.info("      %s", f.relative_to(effective_workspace))
 
     return {
         "agent_id": agent_id,
@@ -901,7 +986,7 @@ def execute_openclaw_task(
         "status": status,
         "transcript": transcript,
         "usage": usage,
-        "workspace": str(workspace),
+        "workspace": str(effective_workspace),
         "exit_code": exit_code,
         "timed_out": timed_out,
         "execution_time": execution_time,
