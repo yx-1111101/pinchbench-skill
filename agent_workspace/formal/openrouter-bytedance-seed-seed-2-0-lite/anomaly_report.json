@@ -1,0 +1,17 @@
+[
+  {
+    "badge_id": "1042",
+    "anomaly_type": "impossible_travel",
+    "description": "Badge 1042 scanned at HQ Building (2026-03-10 08:05:33) and Annex Building (2026-03-10 08:05:58) only 25 seconds apart."
+  },
+  {
+    "badge_id": "2371",
+    "anomaly_type": "after_hours_restricted",
+    "description": "Badge 2371 was granted access to restricted door D-HQ-SRV-01 at 2026-03-10 02:17:44, outside business hours."
+  },
+  {
+    "badge_id": "3819",
+    "anomaly_type": "repeated_denials",
+    "description": "Badge 3819 had 4 denied attempts at door D-HQ-MAIN-01 between 2026-03-10 14:22:11 and 2026-03-10 14:23:32, within 10 minutes."
+  }
+]
