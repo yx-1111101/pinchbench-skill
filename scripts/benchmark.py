@@ -13,10 +13,12 @@ from the tasks/ directory.
 # ///
 
 import argparse
+import copy
 import importlib.metadata
 import json
 import logging
 import os
+import shutil
 import statistics
 import subprocess
 import sys
@@ -227,10 +229,15 @@ def _parse_args() -> argparse.Namespace:
         "--judge",
         default=None,
         help=(
-            "Judge model or backend. Default (unset): OpenClaw agent session with "
-            "openrouter/anthropic/claude-opus-4.5. Set to a model ID to call its API "
-            "directly (e.g. openai/gpt-4o, anthropic/claude-sonnet-4-5-20250514, claude)"
+            "Judge model. Default (unset): openrouter/anthropic/claude-opus-4.5. "
+            "Used with --judge-backend for LLM grading."
         ),
+    )
+    parser.add_argument(
+        "--judge-backend",
+        choices=("api", "openclaw"),
+        default="api",
+        help="LLM judge backend (default: api)",
     )
     parser.add_argument(
         "--base-url",
@@ -277,11 +284,28 @@ def _parse_args() -> argparse.Namespace:
         default=-0.5,
         help="Slope (%%/run) below which regression is flagged (default: -0.5)",
     )
+    parser.add_argument(
+        "--execute-only",
+        action="store_true",
+        help="Run tasks and archive execution artifacts, but skip grading and summary generation",
+    )
+    parser.add_argument(
+        "--grade-only",
+        action="store_true",
+        help="Grade previously archived execution artifacts without re-running tasks",
+    )
+    parser.add_argument(
+        "--artifacts-dir",
+        default=None,
+        help="Directory for archived execution artifacts (defaults to a model-scoped path)",
+    )
     args = parser.parse_args()
 
     # Validate --trend-window
     if args.trend_window < 2:
         parser.error("--trend-window must be >= 2")
+    if args.execute_only and args.grade_only:
+        parser.error("--execute-only and --grade-only are mutually exclusive")
 
     return args
 
@@ -567,6 +591,128 @@ def _log_category_summary(
     logger.info("%s", "=" * 80)
 
 
+def _resolve_artifacts_dir(
+    output_dir_arg: str,
+    run_scope: str,
+    model_slug: str,
+    explicit_artifacts_dir: Optional[str],
+) -> Path:
+    if explicit_artifacts_dir:
+        return Path(explicit_artifacts_dir)
+    if output_dir_arg == "results":
+        return results_model_dir(run_scope, model_slug) / "artifacts"
+    return Path(output_dir_arg) / f"{model_slug}_artifacts"
+
+
+def _artifact_run_dir(artifacts_dir: Path, task_id: str, run_index: int) -> Path:
+    return artifacts_dir / task_id / f"run_{run_index}"
+
+
+def _execution_manifest_path(artifacts_dir: Path) -> Path:
+    return artifacts_dir / "execution_manifest.json"
+
+
+def _read_execution_manifest(artifacts_dir: Path) -> Dict[str, Any]:
+    manifest_path = _execution_manifest_path(artifacts_dir)
+    if not manifest_path.exists():
+        return {}
+    return json.loads(manifest_path.read_text(encoding="utf-8"))
+
+
+def _write_execution_manifest(artifacts_dir: Path, manifest: Dict[str, Any]) -> None:
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    _execution_manifest_path(artifacts_dir).write_text(
+        json.dumps(manifest, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _archive_execution_artifact(
+    *,
+    artifacts_dir: Path,
+    task_id: str,
+    run_index: int,
+    execution_result: Dict[str, Any],
+) -> Dict[str, Any]:
+    run_dir = _artifact_run_dir(artifacts_dir, task_id, run_index)
+    if run_dir.exists():
+        shutil.rmtree(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    archived_workspace = run_dir / "workspace"
+    archived_workspace.mkdir(parents=True, exist_ok=True)
+
+    source_workspace_str = execution_result.get("workspace", "")
+    if source_workspace_str:
+        source_workspace = Path(source_workspace_str)
+        if source_workspace.exists():
+            shutil.copytree(source_workspace, archived_workspace, dirs_exist_ok=True)
+
+    archived_result = copy.deepcopy(execution_result)
+    archived_result["archived_workspace"] = str(archived_workspace)
+
+    (run_dir / "execution_result.json").write_text(
+        json.dumps(archived_result, indent=2),
+        encoding="utf-8",
+    )
+    return archived_result
+
+
+def _load_execution_artifact(artifacts_dir: Path, task_id: str, run_index: int) -> Dict[str, Any]:
+    run_dir = _artifact_run_dir(artifacts_dir, task_id, run_index)
+    result_path = run_dir / "execution_result.json"
+    return json.loads(result_path.read_text(encoding="utf-8"))
+
+
+def _build_task_entries(
+    results: List[Dict[str, Any]],
+    grades_by_task_id: Dict[str, Dict[str, Any]],
+    tasks_by_id: Dict[str, Task],
+) -> List[Dict[str, Any]]:
+    return [
+        {
+            "task_id": result["task_id"],
+            "status": result["status"],
+            "timed_out": result["timed_out"],
+            "execution_time": result["execution_time"],
+            "transcript_length": len(result["transcript"]),
+            "usage": result.get("usage", {}),
+            "workspace": result["workspace"],
+            "grading": grades_by_task_id.get(result["task_id"], {}),
+            "frontmatter": tasks_by_id[result["task_id"]].frontmatter,
+        }
+        for result in results
+    ]
+
+
+def _write_results_payload(
+    *,
+    output_path: Path,
+    model: str,
+    benchmark_version: str,
+    run_id: str,
+    suite: str,
+    runs_per_task: int,
+    task_entries: List[Dict[str, Any]],
+    efficiency: Dict[str, Any],
+    extra_fields: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    payload = {
+        "model": model,
+        "benchmark_version": benchmark_version,
+        "run_id": run_id,
+        "timestamp": time.time(),
+        "suite": suite,
+        "runs_per_task": runs_per_task,
+        "tasks": task_entries,
+        "efficiency": efficiency,
+    }
+    if extra_fields:
+        payload.update(extra_fields)
+    output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return payload
+
+
 def main():
     """Main entry point for the benchmark script."""
     # Determine tasks directory
@@ -582,13 +728,14 @@ def main():
         print("\n" + "🦀 " * 30)
         print("🦀 " * 30 + "\n")
     logger.info("🦞🦀🦐 Starting PinchBench 🦐🦀🦞")
-    time.sleep(5)
 
     if not tasks_dir.exists():
         logger.error(f"❌ Tasks directory not found: {tasks_dir}")
         sys.exit(1)
 
     args = _parse_args()
+    if not args.grade_only:
+        time.sleep(5)
     if not args.model and not args.register and not args.upload:
         logger.error("Missing required argument: --model (unless using --register or --upload)")
         sys.exit(2)
@@ -650,28 +797,6 @@ def main():
         output_path = output_dir / f"{run_id}_{model_slug}.json"
         transcripts_dir = output_dir / f"{run_id}_transcripts"
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    transcripts_dir.mkdir(parents=True, exist_ok=True)
-
-    # Validate model exists before wasting time on tasks
-    if args.base_url:
-        logger.info("Using custom endpoint: %s (skipping OpenRouter validation)", args.base_url)
-    else:
-        try:
-            validate_openrouter_model(args.model)
-        except ModelValidationError as exc:
-            logger.error("❌ %s", exc)
-            sys.exit(1)
-
-    agent_id = f"bench-{run_scope}-{model_slug}"
-    ensure_agent_exists(
-        agent_id,
-        args.model,
-        agent_model_workspace(run_scope, model_slug),
-        base_url=args.base_url,
-        api_key=args.api_key,
-    )
-
     task_ids = _select_task_ids(runner.tasks, args.suite)
     results = []
     grades_by_task_id = {}
@@ -683,27 +808,36 @@ def main():
     tasks_by_id = {task.task_id: task for task in tasks_to_run}
 
     runs_per_task = max(1, args.runs)
+    artifacts_dir = _resolve_artifacts_dir(
+        args.output_dir,
+        run_scope,
+        model_slug,
+        args.artifacts_dir,
+    )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    transcripts_dir.mkdir(parents=True, exist_ok=True)
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+    manifest = {
+        "model": args.model,
+        "benchmark_version": _get_benchmark_version(skill_root),
+        "run_id": run_id,
+        "timestamp": time.time(),
+        "suite": args.suite,
+        "runs_per_task": runs_per_task,
+        "artifacts_dir": str(artifacts_dir),
+        "task_runs": [],
+    }
 
     # Incremental result writer: builds partial result JSON from completed
     # tasks so external tools can poll progress while the benchmark runs.
     incremental_path = output_path
 
     def _write_incremental_results():
-        task_entries = [
-            {
-                "task_id": r["task_id"],
-                "status": r["status"],
-                "timed_out": r["timed_out"],
-                "execution_time": r["execution_time"],
-                "transcript_length": len(r["transcript"]),
-                "usage": r.get("usage", {}),
-                "workspace": r["workspace"],
-                "grading": grades_by_task_id.get(r["task_id"], {}),
-                "frontmatter": tasks_by_id[r["task_id"]].frontmatter,
-            }
-            for r in results
-        ]
+        task_entries = _build_task_entries(results, grades_by_task_id, tasks_by_id)
         efficiency = _compute_efficiency_summary(task_entries, grades_by_task_id)
+        completed_count = len(grades_by_task_id) if not args.execute_only else len(task_entries)
         partial = {
             "model": args.model,
             "benchmark_version": _get_benchmark_version(skill_root),
@@ -714,160 +848,310 @@ def main():
             "tasks": task_entries,
             "efficiency": efficiency,
             "in_progress": True,
-            "completed_tasks": len(grades_by_task_id),
+            "completed_tasks": completed_count,
             "total_tasks": len(tasks_to_run),
         }
+        if args.execute_only:
+            partial["grading_pending"] = True
         try:
             incremental_path.write_text(json.dumps(partial, indent=2), encoding="utf-8")
         except OSError:
             pass
 
-    for i, task in enumerate(tasks_to_run, 1):
-        cleanup_agent_sessions(agent_id)
-        task_grades = []
-        task_results = []
-        for run_index in range(runs_per_task):
-            logger.info("\n%s", "=" * 80)
-            logger.info(
-                "📋 Task %s/%s (Run %s/%s)",
-                i,
-                len(tasks_to_run),
-                run_index + 1,
-                runs_per_task,
-            )
-            logger.info("%s", "=" * 80)
-            execution_error = None
-            try:
-                result = execute_openclaw_task(
-                    task=task,
-                    agent_id=agent_id,
-                    model_id=args.model,
-                    run_id=f"{run_id}-{run_index + 1}",
-                    timeout_multiplier=args.timeout_multiplier,
-                    skill_dir=skill_dir,
-                    output_dir=transcripts_dir,
-                    verbose=args.verbose,
-                )
-            except Exception as exc:
-                execution_error = str(exc)
-                logger.warning("Task execution failed for %s, continuing: %s", task.task_id, exc)
-                result = {
-                    "agent_id": agent_id,
-                    "task_id": task.task_id,
-                    "status": "error",
-                    "transcript": [],
-                    "usage": {},
-                    "workspace": "",
-                    "exit_code": -1,
-                    "timed_out": False,
-                    "execution_time": 0.0,
-                    "stdout": "",
-                    "stderr": execution_error,
-                }
-            try:
-                grade_kwargs = dict(
-                    task=task, execution_result=result, skill_dir=skill_dir, verbose=args.verbose
-                )
-                if args.judge:
-                    grade_kwargs["judge_model"] = args.judge
-                    grade_kwargs["judge_backend"] = "api"
-                grade = grade_task(**grade_kwargs)
-            except Exception as exc:
-                if execution_error:
-                    note = f"Execution failed: {execution_error}; Grading failed: {exc}"
-                else:
-                    note = f"Grading failed: {exc}"
-                logger.warning("Task grading failed for %s, continuing: %s", task.task_id, exc)
-                grade = GradeResult(
-                    task_id=task.task_id,
-                    score=0.0,
-                    max_score=1.0,
-                    grading_type=task.grading_type,
-                    breakdown={},
-                    notes=note,
-                )
-            task_grades.append(grade)
-            task_results.append(result)
-            results.append(result)
-
-            # Log score immediately after grading
-            score_pct = grade.score / grade.max_score * 100 if grade.max_score > 0 else 0
-            status_emoji = (
-                "✅" if grade.score >= grade.max_score else "⚠️" if grade.score > 0 else "❌"
-            )
-            logger.info(
-                "%s Task %s: %.1f/%.1f (%.0f%%) - %s",
-                status_emoji,
-                task.task_id,
-                grade.score,
-                grade.max_score,
-                score_pct,
-                grade.grading_type,
-            )
-            if grade.notes:
-                logger.info("   Notes: %s", grade.notes[:200])
-
-        task_scores = [grade.score for grade in task_grades]
-        grades_by_task_id[task.task_id] = {
-            "runs": [grade.to_dict() for grade in task_grades],
-            "mean": statistics.mean(task_scores),
-            "std": statistics.stdev(task_scores) if len(task_scores) > 1 else 0.0,
-            "min": min(task_scores),
-            "max": max(task_scores),
-        }
-
-        all_runs_missing_transcript = all(
-            not run_result.get("transcript") for run_result in task_results
+    def _record_manifest_entry(task_id: str, run_index: int, execution_result: Dict[str, Any]) -> None:
+        task_runs = [entry for entry in manifest["task_runs"] if not (
+            entry["task_id"] == task_id and entry["run_index"] == run_index
+        )]
+        task_runs.append(
+            {
+                "task_id": task_id,
+                "run_index": run_index,
+                "status": execution_result.get("status"),
+                "timed_out": execution_result.get("timed_out"),
+                "execution_time": execution_result.get("execution_time"),
+                "artifact_dir": str(_artifact_run_dir(artifacts_dir, task_id, run_index)),
+            }
         )
-        if (
-            task.task_id == sanity_task_id
-            and grades_by_task_id[task.task_id]["mean"] == 0.0
-            and not args.no_fail_fast
-            and not all_runs_missing_transcript
-        ):
-            logger.error(
-                "🚨 FAIL FAST: Sanity check (%s) scored 0%%. Aborting benchmark run to avoid wasting resources.",
-                sanity_task_id,
-            )
-            sys.exit(3)
-        if task.task_id == sanity_task_id and grades_by_task_id[task.task_id]["mean"] == 0.0:
-            if all_runs_missing_transcript:
-                logger.warning(
-                    "⚠️ Sanity check scored 0%% but transcripts were missing for all runs; skipping fail-fast as likely infrastructure/logging issue."
-                )
+        manifest["task_runs"] = sorted(
+            task_runs,
+            key=lambda entry: (entry["task_id"], entry["run_index"]),
+        )
+        manifest["timestamp"] = time.time()
+        _write_execution_manifest(artifacts_dir, manifest)
 
-        # Incremental write: update result JSON after each task so partial
-        # results are available while the benchmark is still running.
-        _write_incremental_results()
+    def _grade_execution_result(task: Task, execution_result: Dict[str, Any], execution_error: str | None):
+        try:
+            grading_execution_result = copy.deepcopy(execution_result)
+            archived_workspace = grading_execution_result.get("archived_workspace")
+            if archived_workspace:
+                grading_execution_result["workspace"] = archived_workspace
+            grade_kwargs = dict(
+                task=task,
+                execution_result=grading_execution_result,
+                skill_dir=skill_dir,
+                judge_backend=args.judge_backend,
+                verbose=args.verbose,
+            )
+            if args.judge:
+                grade_kwargs["judge_model"] = args.judge
+            return grade_task(**grade_kwargs)
+        except Exception as exc:
+            if execution_error:
+                note = f"Execution failed: {execution_error}; Grading failed: {exc}"
+            else:
+                note = f"Grading failed: {exc}"
+            logger.warning("Task grading failed for %s, continuing: %s", task.task_id, exc)
+            return GradeResult(
+                task_id=task.task_id,
+                score=0.0,
+                max_score=1.0,
+                grading_type=task.grading_type,
+                breakdown={},
+                notes=note,
+            )
+
+    if args.grade_only:
+        manifest = _read_execution_manifest(artifacts_dir)
+        if not manifest:
+            logger.error("No execution manifest found in %s", artifacts_dir)
+            sys.exit(1)
+        runs_per_task = int(manifest.get("runs_per_task", runs_per_task))
+
+        logger.info("📦 Grading archived executions from %s", artifacts_dir)
+        for i, task in enumerate(tasks_to_run, 1):
+            task_grades = []
+            for run_index in range(runs_per_task):
+                logger.info("\n%s", "=" * 80)
+                logger.info(
+                    "🧪 Grade Task %s/%s (Run %s/%s)",
+                    i,
+                    len(tasks_to_run),
+                    run_index + 1,
+                    runs_per_task,
+                )
+                logger.info("%s", "=" * 80)
+
+                try:
+                    archived_result = _load_execution_artifact(
+                        artifacts_dir,
+                        task.task_id,
+                        run_index + 1,
+                    )
+                except FileNotFoundError as exc:
+                    logger.warning("Missing execution artifact for %s run %s: %s", task.task_id, run_index + 1, exc)
+                    archived_result = {
+                        "agent_id": f"bench-{run_scope}-{model_slug}",
+                        "task_id": task.task_id,
+                        "status": "error",
+                        "transcript": [],
+                        "usage": {},
+                        "workspace": "",
+                        "exit_code": -1,
+                        "timed_out": False,
+                        "execution_time": 0.0,
+                        "stdout": "",
+                        "stderr": f"Missing execution artifact: {exc}",
+                    }
+
+                grade = _grade_execution_result(task, archived_result, None)
+                task_grades.append(grade)
+                results.append(archived_result)
+
+                score_pct = grade.score / grade.max_score * 100 if grade.max_score > 0 else 0
+                status_emoji = (
+                    "✅" if grade.score >= grade.max_score else "⚠️" if grade.score > 0 else "❌"
+                )
+                logger.info(
+                    "%s Task %s: %.1f/%.1f (%.0f%%) - %s",
+                    status_emoji,
+                    task.task_id,
+                    grade.score,
+                    grade.max_score,
+                    score_pct,
+                    grade.grading_type,
+                )
+                if grade.notes:
+                    logger.info("   Notes: %s", grade.notes[:200])
+
+            task_scores = [grade.score for grade in task_grades]
+            grades_by_task_id[task.task_id] = {
+                "runs": [grade.to_dict() for grade in task_grades],
+                "mean": statistics.mean(task_scores),
+                "std": statistics.stdev(task_scores) if len(task_scores) > 1 else 0.0,
+                "min": min(task_scores),
+                "max": max(task_scores),
+            }
+            _write_incremental_results()
+    else:
+        # Validate model exists before wasting time on tasks
+        if args.base_url:
+            logger.info("Using custom endpoint: %s (skipping OpenRouter validation)", args.base_url)
+        else:
+            try:
+                validate_openrouter_model(args.model)
+            except ModelValidationError as exc:
+                logger.error("❌ %s", exc)
+                sys.exit(1)
+
+        agent_id = f"bench-{run_scope}-{model_slug}"
+        ensure_agent_exists(
+            agent_id,
+            args.model,
+            agent_model_workspace(run_scope, model_slug),
+            base_url=args.base_url,
+            api_key=args.api_key,
+        )
+
+        for i, task in enumerate(tasks_to_run, 1):
+            cleanup_agent_sessions(agent_id)
+            task_grades = []
+            task_results = []
+            for run_index in range(runs_per_task):
+                logger.info("\n%s", "=" * 80)
+                logger.info(
+                    "📋 Task %s/%s (Run %s/%s)",
+                    i,
+                    len(tasks_to_run),
+                    run_index + 1,
+                    runs_per_task,
+                )
+                logger.info("%s", "=" * 80)
+                execution_error = None
+                try:
+                    result = execute_openclaw_task(
+                        task=task,
+                        agent_id=agent_id,
+                        model_id=args.model,
+                        run_id=f"{run_id}-{run_index + 1}",
+                        timeout_multiplier=args.timeout_multiplier,
+                        skill_dir=skill_dir,
+                        output_dir=transcripts_dir,
+                        verbose=args.verbose,
+                    )
+                except Exception as exc:
+                    execution_error = str(exc)
+                    logger.warning("Task execution failed for %s, continuing: %s", task.task_id, exc)
+                    result = {
+                        "agent_id": agent_id,
+                        "task_id": task.task_id,
+                        "status": "error",
+                        "transcript": [],
+                        "usage": {},
+                        "workspace": "",
+                        "exit_code": -1,
+                        "timed_out": False,
+                        "execution_time": 0.0,
+                        "stdout": "",
+                        "stderr": execution_error,
+                    }
+
+                archived_result = _archive_execution_artifact(
+                    artifacts_dir=artifacts_dir,
+                    task_id=task.task_id,
+                    run_index=run_index + 1,
+                    execution_result=result,
+                )
+                _record_manifest_entry(task.task_id, run_index + 1, archived_result)
+
+                task_results.append(result)
+                results.append(result)
+
+                if args.execute_only:
+                    continue
+
+                grade = _grade_execution_result(task, archived_result, execution_error)
+                task_grades.append(grade)
+
+                score_pct = grade.score / grade.max_score * 100 if grade.max_score > 0 else 0
+                status_emoji = (
+                    "✅" if grade.score >= grade.max_score else "⚠️" if grade.score > 0 else "❌"
+                )
+                logger.info(
+                    "%s Task %s: %.1f/%.1f (%.0f%%) - %s",
+                    status_emoji,
+                    task.task_id,
+                    grade.score,
+                    grade.max_score,
+                    score_pct,
+                    grade.grading_type,
+                )
+                if grade.notes:
+                    logger.info("   Notes: %s", grade.notes[:200])
+
+            if args.execute_only:
+                _write_incremental_results()
+                continue
+
+            task_scores = [grade.score for grade in task_grades]
+            grades_by_task_id[task.task_id] = {
+                "runs": [grade.to_dict() for grade in task_grades],
+                "mean": statistics.mean(task_scores),
+                "std": statistics.stdev(task_scores) if len(task_scores) > 1 else 0.0,
+                "min": min(task_scores),
+                "max": max(task_scores),
+            }
+
+            all_runs_missing_transcript = all(
+                not run_result.get("transcript") for run_result in task_results
+            )
+            if (
+                task.task_id == sanity_task_id
+                and grades_by_task_id[task.task_id]["mean"] == 0.0
+                and not args.no_fail_fast
+                and not all_runs_missing_transcript
+            ):
+                logger.error(
+                    "🚨 FAIL FAST: Sanity check (%s) scored 0%%. Aborting benchmark run to avoid wasting resources.",
+                    sanity_task_id,
+                )
+                sys.exit(3)
+            if task.task_id == sanity_task_id and grades_by_task_id[task.task_id]["mean"] == 0.0:
+                if all_runs_missing_transcript:
+                    logger.warning(
+                        "⚠️ Sanity check scored 0%% but transcripts were missing for all runs; skipping fail-fast as likely infrastructure/logging issue."
+                    )
+
+            # Incremental write: update result JSON after each task so partial
+            # results are available while the benchmark runs.
+            _write_incremental_results()
+
+        if args.execute_only:
+            task_entries = _build_task_entries(results, grades_by_task_id, tasks_by_id)
+            efficiency = _compute_efficiency_summary(task_entries, grades_by_task_id)
+            _write_results_payload(
+                output_path=output_path,
+                model=args.model,
+                benchmark_version=_get_benchmark_version(skill_root),
+                run_id=run_id,
+                suite=args.suite,
+                runs_per_task=runs_per_task,
+                task_entries=task_entries,
+                efficiency=efficiency,
+                extra_fields={
+                    "grading_pending": True,
+                    "executed_tasks": len(task_entries),
+                    "total_tasks": len(tasks_to_run),
+                },
+            )
+            logger.info("Execution-only run complete. Archived artifacts to %s", artifacts_dir)
+            logger.info("Saved execute-only results to %s", output_path)
+            logger.info("Skipping grading, trend analysis, and upload (--execute-only)")
+            return
 
     def _build_and_write_results():
         """Build aggregate result from completed tasks and write to output_path."""
-        task_entries = [
-            {
-                "task_id": result["task_id"],
-                "status": result["status"],
-                "timed_out": result["timed_out"],
-                "execution_time": result["execution_time"],
-                "transcript_length": len(result["transcript"]),
-                "usage": result.get("usage", {}),
-                "workspace": result["workspace"],
-                "grading": grades_by_task_id[result["task_id"]],
-                "frontmatter": tasks_by_id[result["task_id"]].frontmatter,
-            }
-            for result in results
-        ]
+        task_entries = _build_task_entries(results, grades_by_task_id, tasks_by_id)
         efficiency = _compute_efficiency_summary(task_entries, grades_by_task_id)
-        aggregate = {
-            "model": args.model,
-            "benchmark_version": _get_benchmark_version(skill_root),
-            "run_id": run_id,
-            "timestamp": time.time(),
-            "suite": args.suite,
-            "runs_per_task": runs_per_task,
-            "tasks": task_entries,
-            "efficiency": efficiency,
-        }
-        output_path.write_text(json.dumps(aggregate, indent=2), encoding="utf-8")
+        aggregate = _write_results_payload(
+            output_path=output_path,
+            model=args.model,
+            benchmark_version=_get_benchmark_version(skill_root),
+            run_id=run_id,
+            suite=args.suite,
+            runs_per_task=runs_per_task,
+            task_entries=task_entries,
+            efficiency=efficiency,
+        )
         return task_entries, efficiency
 
     task_entries, efficiency = _build_and_write_results()

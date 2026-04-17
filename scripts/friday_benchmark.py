@@ -94,7 +94,17 @@ def main():
     parser.add_argument("--upload", type=str, metavar="RESULTS_JSON", help="Upload previous results")
     parser.add_argument("--timeout-multiplier", type=float, default=1.0, help="Scale timeouts")
     parser.add_argument("--runs", type=int, default=1, help="Runs per task")
-    parser.add_argument("--judge", default=None, help="Judge model for LLM grading")
+    parser.add_argument(
+        "--judge",
+        default=None,
+        help="Judge model for LLM grading (default: openrouter/anthropic/claude-opus-4.5)",
+    )
+    parser.add_argument(
+        "--judge-backend",
+        choices=("api", "openclaw"),
+        default="api",
+        help="LLM judge backend (default: api)",
+    )
     parser.add_argument("--base-url", default=None, help="Custom API base URL")
     parser.add_argument("--api-key", default=None, help="API key for custom endpoint")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
@@ -250,11 +260,11 @@ def main():
             try:
                 grade_kwargs = dict(
                     task=task, execution_result=result, skill_dir=skill_root,
+                    judge_backend=args.judge_backend,
                     verbose=args.verbose,
                 )
                 if args.judge:
                     grade_kwargs["judge_model"] = args.judge
-                    grade_kwargs["judge_backend"] = "api"
                 grade = grade_task(**grade_kwargs)
             except Exception as exc:
                 note = f"Grading failed: {exc}"

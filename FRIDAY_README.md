@@ -7,11 +7,11 @@
 ```
 pinchbench-skill/
 ├── scripts/
-│   ├── benchmark.py              # PinchBench 原始入口（未修改）
+│   ├── benchmark.py              # PinchBench 原始入口（已扩展两阶段模式）
 │   ├── friday_benchmark.py       # Friday 评测入口（新增）
 │   ├── friday_adapter.py         # 适配层：扩展任务加载 + workspace 处理（新增）
 │   ├── convert_friday_tasks.py   # 任务格式转换工具（新增）
-│   ├── lib_agent.py              # PinchBench OpenClaw 执行引擎（未修改）
+│   ├── lib_agent.py              # PinchBench OpenClaw 执行引擎（已增强 transcript 等待）
 │   ├── lib_grading.py            # PinchBench 评分引擎（未修改）
 │   └── lib_tasks.py              # PinchBench 任务加载（未修改）
 ├── tasks/
@@ -89,6 +89,32 @@ uv run scripts/friday_benchmark.py \
 uv run scripts/benchmark.py \
   --model anthropic/claude-sonnet-4
 ```
+
+### PinchBench 两阶段运行
+
+仅 `scripts/benchmark.py` 支持两阶段模式，`scripts/friday_benchmark.py` 目前仍是单阶段执行+评分。
+
+```bash
+# 第 1 步：只执行任务，归档评分依赖文件
+uv run scripts/benchmark.py \
+  --model anthropic/claude-sonnet-4 \
+  --execute-only \
+  --no-upload
+
+# 第 2 步：基于 results/... 下已归档的 artifacts 计算评分
+uv run scripts/benchmark.py \
+  --model anthropic/claude-sonnet-4 \
+  --grade-only \
+  --no-upload
+```
+
+两阶段模式的设计目标是和原有结果路径保持一致：
+
+- `summary.json` 仍写到原来的 `results/<scope>/<model_slug>/summary.json`
+- `transcripts/` 仍写到原来的 `results/<scope>/<model_slug>/transcripts/`
+- 仅额外增加 `results/<scope>/<model_slug>/artifacts/`
+- `--execute-only` 会先写一个带 `grading_pending: true` 的 `summary.json`
+- `--grade-only` 会基于同目录下的 `artifacts/` 重新评分，并覆盖为最终版 `summary.json`
 
 ### 按场景分类跑
 
@@ -215,6 +241,26 @@ ls results/
 }
 ```
 
+对于 `scripts/benchmark.py` 的两阶段模式，同一模型目录下还会额外出现：
+
+```bash
+results/formal/<model_slug>/
+├── summary.json
+├── transcripts/
+└── artifacts/
+    ├── execution_manifest.json
+    └── task_xx/
+        └── run_1/
+            ├── execution_result.json
+            └── workspace/
+```
+
+说明：
+
+- 默认单阶段模式和旧版保持兼容，只是多出 `artifacts/`
+- `summary.json` 中的 `workspace` 字段仍保持原有风格，不会改成 artifact 路径
+- 评分阶段实际读取的是 `artifacts/.../workspace/`
+
 ## 全部 CLI 参数
 
 | 参数 | 默认值 | 说明 |
@@ -228,6 +274,9 @@ ls results/
 | `--runs` | 1 | 每个任务执行次数（取平均） |
 | `--timeout-multiplier` | 1.0 | 超时倍率 |
 | `--output-dir` | `results` | 结果输出目录 |
+| `--execute-only` | 关 | 只执行任务并归档评分依赖文件，不做最终评分 |
+| `--grade-only` | 关 | 只基于已归档 artifacts 评分，不重新执行任务 |
+| `--artifacts-dir` | 自动推导 | 自定义 artifacts 目录；默认在对应 `results/.../artifacts/` 下 |
 | `--verbose` / `-v` | 关 | 详细日志 |
 | `--no-upload` | 关 | 跳过上传排行榜 |
 | `--no-fail-fast` | 关 | sanity check 失败后继续跑 |

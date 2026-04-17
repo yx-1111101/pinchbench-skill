@@ -651,6 +651,32 @@ def _find_recent_session_path(agent_dir: Path, started_at: float) -> Path | None
     return max(pool, key=lambda path: path.stat().st_mtime)
 
 
+def _pending_transcript_lock_paths(agent_dir: Path, resolved_session_id: str | None) -> List[Path]:
+    """Return lock files that indicate OpenClaw is still flushing transcript data."""
+    sessions_dir = agent_dir / "sessions"
+    if not sessions_dir.exists():
+        return []
+
+    candidates: List[Path] = []
+    if resolved_session_id:
+        direct_lock = sessions_dir / f"{resolved_session_id}.jsonl.lock"
+        if direct_lock.exists():
+            candidates.append(direct_lock)
+
+        nested_lock = sessions_dir / resolved_session_id / "transcript.jsonl.lock"
+        if nested_lock.exists():
+            candidates.append(nested_lock)
+
+        nested_events_lock = sessions_dir / resolved_session_id / "events.jsonl.lock"
+        if nested_events_lock.exists():
+            candidates.append(nested_events_lock)
+
+    if candidates:
+        return candidates
+
+    return list(sessions_dir.rglob("*.jsonl.lock"))
+
+
 def _load_transcript(
     agent_id: str, session_id: str, started_at: float
 ) -> tuple[List[Dict[str, Any]], Optional[Path]]:
@@ -664,7 +690,8 @@ def _load_transcript(
     #   1. Resolve the real session ID from sessions.json
     #   2. Glob for any .jsonl in the sessions dir (most-recently-modified)
     #   3. Try our passed-in session ID as a last resort
-    for attempt in range(15):
+    max_attempts = 45
+    for attempt in range(max_attempts):
         # 1. Try sessions.json first — OpenClaw writes the real UUID here
         resolved_session_id = _resolve_session_id_from_store(agent_id)
         if resolved_session_id:
@@ -724,7 +751,20 @@ def _load_transcript(
         if transcript_path is not None:
             break
 
-        if attempt < 14:
+        pending_locks = _pending_transcript_lock_paths(agent_dir, resolved_session_id)
+        if pending_locks and attempt < max_attempts - 1:
+            if attempt in (0, 4, 14, 29):
+                logger.info(
+                    "Waiting for transcript lock to clear for %s: %s (attempt %s/%s)",
+                    agent_id,
+                    [path.name for path in pending_locks],
+                    attempt + 1,
+                    max_attempts,
+                )
+            time.sleep(2.0)
+            continue
+
+        if attempt < max_attempts - 1:
             time.sleep(1.0)
 
     if transcript_path is None:
@@ -791,6 +831,58 @@ def _extract_usage_from_transcript(transcript: List[Dict[str, Any]]) -> Dict[str
         totals["cost_usd"] += cost.get("total", 0.0)
 
     return totals
+
+
+def _normalize_expected_model(model_id: str) -> tuple[Optional[str], str]:
+    """Normalize configured model id into (provider, model) for comparison."""
+    if "/" not in model_id:
+        return None, model_id
+
+    provider, model = model_id.split("/", 1)
+    # Benchmarks pass OpenRouter models as "openrouter/<provider>/<model>".
+    # Transcript assistant messages store model as "<provider>/<model>".
+    if provider == "openrouter":
+        return "openrouter", model
+    return provider, model
+
+
+def _detect_model_mismatch(
+    transcript: List[Dict[str, Any]],
+    expected_model_id: str,
+) -> Optional[str]:
+    """Return mismatch detail when successful assistant turns use a different model."""
+    expected_provider, expected_model = _normalize_expected_model(expected_model_id)
+
+    mismatches: List[str] = []
+    for entry in transcript:
+        if entry.get("type") != "message":
+            continue
+        msg = entry.get("message", {})
+        if msg.get("role") != "assistant":
+            continue
+        if msg.get("stopReason") == "error":
+            # Ignore failed model calls; they are useful for diagnostics but do
+            # not represent the model that actually produced task output.
+            continue
+
+        actual_provider = msg.get("provider")
+        actual_model = msg.get("model")
+        if not actual_model:
+            continue
+
+        provider_mismatch = expected_provider is not None and actual_provider != expected_provider
+        model_mismatch = actual_model != expected_model and actual_model != expected_model_id
+        if provider_mismatch or model_mismatch:
+            mismatches.append(f"{actual_provider or 'unknown'}/{actual_model}")
+
+    if not mismatches:
+        return None
+
+    unique = sorted(set(mismatches))
+    return (
+        f"Model mismatch detected: expected {expected_model_id}, "
+        f"but assistant output used {', '.join(unique)}"
+    )
 
 
 def execute_openclaw_task(
@@ -933,6 +1025,13 @@ def execute_openclaw_task(
         status = "error"
     if stderr and "openclaw command not found" in str(stderr):
         status = "error"
+    model_mismatch = _detect_model_mismatch(transcript, model_id)
+    if model_mismatch:
+        status = "error"
+        if stderr:
+            stderr = f"{stderr.rstrip()}\n{model_mismatch}"
+        else:
+            stderr = model_mismatch
 
     # Use the effective agent workspace path in result payload so downstream
     # grading always evaluates where artifacts were actually written.

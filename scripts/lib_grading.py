@@ -53,7 +53,7 @@ def grade_task(
     judge_model: str = DEFAULT_JUDGE_MODEL,
     judge_agent_prefix: str = DEFAULT_JUDGE_AGENT_PREFIX,
     judge_timeout_seconds: float = DEFAULT_JUDGE_TIMEOUT_SECONDS,
-    judge_backend: str = "openclaw",
+    judge_backend: str = "api",
     verbose: bool = False,
 ) -> GradeResult:
     grading_type = task.grading_type
@@ -185,7 +185,7 @@ def _grade_llm_judge(
     judge_model: str,
     judge_agent_prefix: str,
     judge_timeout_seconds: float,
-    judge_backend: str = "openclaw",
+    judge_backend: str = "api",
     skill_dir: Optional[Path] = None,
     verbose: bool = False,
 ) -> GradeResult:
@@ -224,6 +224,7 @@ def _grade_llm_judge(
 
     max_judge_attempts = 2
     raw_parsed: Dict[str, Any] = {}
+    last_judge_error = ""
     for attempt in range(max_judge_attempts):
         if judge_backend == "api":
             # Direct API call — bypasses OpenClaw personality injection
@@ -239,6 +240,10 @@ def _grade_llm_judge(
                     logger.info("   [VERBOSE] Judge error: %s", judge_result["error"])
 
             if judge_result.get("status") != "success":
+                last_judge_error = (
+                    f"Judge API call failed: "
+                    f"{judge_result.get('error', judge_result.get('status', 'unknown error'))}"
+                )
                 logger.warning(
                     "Judge API call failed (attempt %d/%d): %s",
                     attempt + 1,
@@ -268,6 +273,7 @@ def _grade_llm_judge(
                 logger.info("   [VERBOSE] Judge stderr: %s", judge_result.get("stderr", "")[:500])
 
             if judge_result.get("status") != "success":
+                last_judge_error = f"Judge execution failed: {judge_result.get('status', 'unknown error')}"
                 logger.warning(
                     "Judge execution failed (attempt %d/%d): %s",
                     attempt + 1,
@@ -281,6 +287,16 @@ def _grade_llm_judge(
             raw_parsed = _parse_judge_response(judge_result.get("transcript", []))
 
         break  # Parsed response; exit loop after success or after the final failed attempt
+
+    if not raw_parsed and last_judge_error:
+        return GradeResult(
+            task_id=task.task_id,
+            score=0.0,
+            max_score=1.0,
+            grading_type="llm_judge",
+            breakdown={},
+            notes=last_judge_error,
+        )
 
     if verbose:
         logger.info("   [VERBOSE] Judge raw response parsed: %s", raw_parsed)
