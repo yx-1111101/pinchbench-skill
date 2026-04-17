@@ -1,30 +1,29 @@
-# API Call Notes
+# API Notes
 
-## Extracted endpoint
+## Extracted API endpoint
 - Endpoint: `https://api.example.com/v2/data`
 - Method: `GET`
-- Headers:
-  - `Content-Type: application/json`
-  - `Accept: application/json`
 - Timeout: `30` seconds
 
-## Files created
-- `call_api.py` - Python script that reads `config.json` and calls the configured API endpoint.
+## Source
+These values were read from `config.json` under the `api` object.
 
-## Process
-1. Read `config.json`.
-2. Found the API configuration under the `api` key.
-3. Extracted the endpoint and related request settings.
-4. Created `call_api.py` using Python's standard library (`urllib.request`) so it does not depend on external packages.
-5. The script loads `config.json`, builds the request, sends it, then prints the HTTP status and response body.
+## Python script
+A runnable client was created at `call_api.py`.
 
-## Usage
-Run:
+## How it works
+1. Reads `config.json` from the same directory.
+2. Extracts `api.endpoint`, `api.method`, `api.headers`, and `api.timeout`.
+3. Sends the HTTP request using Python's standard library (`urllib.request`).
+4. Prints the HTTP status and response body.
+5. Prints useful error output for HTTP and network failures.
 
+## Run it
 ```bash
 python3 call_api.py
 ```
 
 ## Notes
-- The script uses the values in `config.json`, so if the endpoint, method, headers, or timeout change there, the script will automatically use the updated settings.
-- Error handling is included for HTTP and network errors.
+- The current config points to `https://api.example.com/v2/data`.
+- The script uses only the Python standard library, so no extra package install is needed.
+- If `config.json` changes, the script will automatically use the updated endpoint and request settings on the next run.
