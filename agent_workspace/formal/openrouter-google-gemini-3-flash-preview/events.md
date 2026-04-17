@@ -1,26 +1,26 @@
 # Upcoming Tech Conferences
 
-1. **Web Summit Vancouver**
-   - Date: May 11-14, 2026
-   - Location: Vancouver Convention Center, Vancouver, Canada
-   - Website: https://collisionconf.com/
+1. **Google Cloud Next 2026**
+   - Date: April 22-24, 2026
+   - Location: Mandalay Bay Convention Center, Las Vegas, Nevada, USA
+   - Website: https://www.googlecloudevents.com/next-vegas
 
-2. **Infoshare 2026**
-   - Date: May 20-21, 2026
-   - Location: Gdansk, Poland
-   - Website: https://infoshare.pl/
-
-3. **Microsoft Build 2026**
+2. **Microsoft Build 2026**
    - Date: June 2-3, 2026
-   - Location: San Francisco, California, USA
-   - Website: https://developer.microsoft.com/en-us/events/build/build-mc
+   - Location: San Francisco, California, USA and online
+   - Website: https://build.microsoft.com/en-US/home
 
-4. **VivaTech 2026**
-   - Date: June 17-20, 2026
-   - Location: Paris, France
-   - Website: https://vivatechnology.com/
+3. **Cisco Live 2026**
+   - Date: May 31-June 4, 2026
+   - Location: Las Vegas, Nevada, USA
+   - Website: https://www.ciscolive.com/global.html
 
-5. **Web Summit 2026**
-   - Date: November 9-12, 2026
-   - Location: MEO Arena, Lisbon, Portugal
-   - Website: https://websummit.com/web-summit-2026/
+4. **Black Hat USA 2026**
+   - Date: August 1-6, 2026
+   - Location: Mandalay Bay Convention Center, Las Vegas, Nevada, USA
+   - Website: https://blackhat.com/us-26/
+
+5. **DEF CON 34**
+   - Date: August 6-9, 2026
+   - Location: Las Vegas Convention Center, Las Vegas, Nevada, USA
+   - Website: https://defcon.org/
