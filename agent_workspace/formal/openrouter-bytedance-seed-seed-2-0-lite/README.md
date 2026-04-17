@@ -1,3 +1,3 @@
 # datautils
 
-A basic Python library scaffold for reusable data utility functions.
+A basic Python library project scaffold for data-related utilities.
