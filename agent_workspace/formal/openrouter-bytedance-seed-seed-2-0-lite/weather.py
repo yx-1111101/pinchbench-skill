@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""Fetch and print a weather summary for San Francisco using wttr.in."""
+
+from __future__ import annotations
+
 import json
 import sys
 import urllib.error
@@ -7,40 +11,32 @@ import urllib.request
 
 
 CITY = "San Francisco"
-URL = "https://wttr.in/{}?format=j1".format(urllib.parse.quote(CITY))
-
-
-def fetch_weather(url: str) -> dict:
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": "weather-script/1.0 (+https://wttr.in)"},
-    )
-    with urllib.request.urlopen(req, timeout=10) as response:
-        return json.load(response)
+URL = f"https://wttr.in/{urllib.parse.quote(CITY)}?format=j1"
 
 
 def main() -> int:
     try:
-        data = fetch_weather(URL)
+        with urllib.request.urlopen(URL, timeout=10) as response:
+            data = json.load(response)
     except urllib.error.URLError as exc:
         print(f"Failed to fetch weather data: {exc}", file=sys.stderr)
         return 1
 
     current = data["current_condition"][0]
-    today = data["weather"][0]
+    weather = data["weather"][0]
     description = current["weatherDesc"][0]["value"]
     temp_f = current["temp_F"]
     feels_like_f = current["FeelsLikeF"]
     humidity = current["humidity"]
     wind_mph = current["windspeedMiles"]
-    high_f = today["maxtempF"]
-    low_f = today["mintempF"]
+    high_f = weather["maxtempF"]
+    low_f = weather["mintempF"]
 
     print(
-        f"San Francisco weather: {description}, {temp_f}°F "
-        f"(feels like {feels_like_f}°F). Humidity is {humidity}% "
-        f"with wind around {wind_mph} mph. Today's high is {high_f}°F "
-        f"and low is {low_f}°F."
+        f"Weather for {CITY}: {description}. "
+        f"Currently {temp_f}°F, feels like {feels_like_f}°F. "
+        f"Humidity {humidity}%, wind {wind_mph} mph. "
+        f"Today's high is {high_f}°F and low is {low_f}°F."
     )
     return 0
 
