@@ -44,6 +44,17 @@ cd skill
 - [uv](https://docs.astral.sh/uv/) package manager
 - A running OpenClaw instance
 
+## Configuration
+
+Copy `.env.example` to `.env` in the repo root and fill in your keys — the benchmark loads it automatically so you never need to `export` manually:
+
+```bash
+cp .env.example .env
+# then edit .env with your OPENROUTER_API_KEY (and others as needed)
+```
+
+Shell exports always take precedence over `.env` values, so per-session overrides still work.
+
 ## What Gets Tested
 
 PinchBench includes 23 tasks across real-world categories:
@@ -93,26 +104,29 @@ export PINCHBENCH_OFFICIAL_KEY=your_official_key
 | Flag                     | Description                                                                   |
 | ------------------------ | ----------------------------------------------------------------------------- |
 | `--model MODEL`          | Model to test (e.g., `openrouter/anthropic/claude-sonnet-4`)                  |
-| `--judge MODEL`          | Judge model for LLM grading; uses direct API when set (see below)                 |
+| `--judge MODEL`          | Judge model for LLM grading (default: `openrouter/anthropic/claude-opus-4.5`) |
+| `--judge-backend`        | `api` (default) or `openclaw` — how the judge is invoked                      |
 | `--suite SUITE`          | `all`, `automated-only`, or comma-separated task IDs                          |
 | `--runs N`               | Number of runs per task for averaging                                         |
 | `--timeout-multiplier N` | Scale timeouts for slower models                                              |
 | `--output-dir DIR`       | Where to save results (default: `results/`)                                   |
+| `--execute-only`         | Run tasks and archive artifacts, skip grading                                 |
+| `--grade-only`           | Re-grade previously archived artifacts without re-running tasks               |
 | `--no-upload`            | Skip uploading to leaderboard                                                 |
 | `--register`             | Request an API token for submissions                                          |
 | `--upload FILE`          | Upload a previous results JSON                                                |
-| `--official-key KEY`     | Mark submission as official (or use `PINCHBENCH_OFFICIAL_KEY` env var)         |
+| `--official-key KEY`     | Mark submission as official (or use `PINCHBENCH_OFFICIAL_KEY` env var)        |
 
 ### Judge
 
-By default (no `--judge` flag), the LLM judge runs as an OpenClaw agent session. When `--judge` is specified, it calls the model API directly instead, bypassing OpenClaw personality injection.
+The LLM judge calls the model API directly by default (`--judge-backend api`), bypassing OpenClaw. The default judge model is `openrouter/anthropic/claude-opus-4.5`.
 
 ```bash
-# Default: OpenClaw agent session (no --judge needed)
+# Default: direct API call, no extra flags needed
 ./scripts/run.sh --model openrouter/anthropic/claude-sonnet-4
 
-# Direct API via OpenRouter
-./scripts/run.sh --model openai/gpt-4o --judge openrouter/anthropic/claude-sonnet-4-5
+# Override judge model (still direct API)
+./scripts/run.sh --model openai/gpt-4o --judge openrouter/anthropic/claude-opus-4.5
 
 # Direct API via Anthropic
 ./scripts/run.sh --model openai/gpt-4o --judge anthropic/claude-sonnet-4-5-20250514
@@ -122,9 +136,27 @@ By default (no `--judge` flag), the LLM judge runs as an OpenClaw agent session.
 
 # Headless Claude CLI
 ./scripts/run.sh --model openai/gpt-4o --judge claude
+
+# Run judge as an OpenClaw agent session instead
+./scripts/run.sh --model openai/gpt-4o --judge-backend openclaw
 ```
 
 Required env vars: `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` depending on the judge model prefix.
+
+### Split execution and grading
+
+Run tasks and grade in separate steps — useful when you want to re-grade with a different judge without re-running the model:
+
+```bash
+# Step 1: run tasks, archive artifacts, skip grading
+./scripts/run.sh --model openrouter/anthropic/claude-sonnet-4 --execute-only
+
+# Step 2: grade archived artifacts (fast, no model re-run)
+./scripts/run.sh --model openrouter/anthropic/claude-sonnet-4 --grade-only --no-upload
+
+# Grade only specific tasks
+./scripts/run.sh --model openrouter/anthropic/claude-sonnet-4 --grade-only --suite task_03_blog --no-upload
+```
 
 ## Contributing Tasks
 

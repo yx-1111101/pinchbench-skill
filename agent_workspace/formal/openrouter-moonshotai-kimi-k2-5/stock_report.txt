@@ -1,8 +1,0 @@
-Apple (AAPL) Stock Report
-Date: 2026-04-16 23:39 UTC
-Price: $263.91 USD
-
-Brief market summary:
-Apple was trading at $263.91 on April 16, 2026, after opening at $266.80 and moving within a daily range of $261.27 to $268.85. Trading volume was about 43.32 million shares, slightly above the 39.78 million average, suggesting active trading. Recent coverage highlighted investor attention on Apple’s AI strategy and satellite connectivity developments, while the stock remained below its 52-week high of $288.62.
-
-Sources: Robinhood stock snapshot and TradingView market data fetched on 2026-04-16.

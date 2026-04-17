@@ -27,7 +27,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 
 from lib_agent import (
-    cleanup_agent_sessions,
     ensure_agent_exists,
     execute_openclaw_task,
     ModelValidationError,
@@ -178,6 +177,26 @@ class BenchmarkRunner:
             )
 
         print("\n" + "=" * 80)
+
+
+def _load_dotenv(skill_root: Path) -> None:
+    """Load .env from the skill root into os.environ.
+
+    Already-set environment variables are never overwritten, so an explicit
+    ``export KEY=value`` in the shell always wins over the .env file.
+    """
+    env_path = skill_root / ".env"
+    if not env_path.exists():
+        return
+    for raw in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
 
 
 def _parse_args() -> argparse.Namespace:
@@ -720,6 +739,8 @@ def main():
     skill_root = script_dir.parent  # Parent of scripts/ is the skill root
     tasks_dir = skill_root / "tasks"
 
+    _load_dotenv(skill_root)
+
     logger.info("🦞🦀🦐 PinchBench - OpenClaw Benchmarking")
     ascii_crab = _load_ascii_art(skill_root, "crab.txt")
     if ascii_crab:
@@ -1003,7 +1024,6 @@ def main():
         )
 
         for i, task in enumerate(tasks_to_run, 1):
-            cleanup_agent_sessions(agent_id)
             task_grades = []
             task_results = []
             for run_index in range(runs_per_task):

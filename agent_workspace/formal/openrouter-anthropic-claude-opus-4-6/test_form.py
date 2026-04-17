@@ -1,119 +1,147 @@
-from pathlib import Path
-import re
+"""
+End-to-end Playwright test for the 3-step registration form (form.html).
+Uses sync API, data-testid selectors, and retry logic for resilience.
+"""
+
 import time
+import pathlib
+from playwright.sync_api import sync_playwright, expect, TimeoutError as PwTimeout
 
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from playwright.sync_api import expect, sync_playwright
-
-
-RETRY_ATTEMPTS = 3
-RETRY_DELAY_SECONDS = 0.4
-
-TEST_DATA = {
-    "fullname": "Jordan Smith",
-    "email": "jordan.smith@example.com",
-    "phone": "+1 555-123-4567",
-    "street": "123 Main St",
-    "city": "San Francisco",
-    "state": "CA",
-    "state_label": "California",
-    "zip": "94102",
+# ── Test data ──────────────────────────────────────────────────────────────────
+PERSONAL = {
+    "fullname": "Jane Doe",
+    "email": "jane.doe@example.com",
+    "phone": "+1 555-987-6543",
 }
 
+ADDRESS = {
+    "street": "742 Evergreen Terrace",
+    "city": "Springfield",
+    "state": "CA",            # value attribute in the <select>
+    "state_label": "California",  # display text for review verification
+    "zip": "90210",
+}
 
-def with_retry(action, selector: str):
-    last_error = None
-    for attempt in range(1, RETRY_ATTEMPTS + 1):
+FORM_PATH = pathlib.Path(__file__).resolve().parent / "form.html"
+SCREENSHOT_PATH = pathlib.Path(__file__).resolve().parent / "success.png"
+
+
+# ── Retry helper ───────────────────────────────────────────────────────────────
+def retry(action, *, retries=3, delay=0.5):
+    """Run *action* (a callable) up to *retries* times, sleeping between attempts."""
+    last_exc = None
+    for attempt in range(1, retries + 1):
         try:
             return action()
-        except Exception as exc:
-            last_error = exc
-            if attempt == RETRY_ATTEMPTS:
-                break
-            time.sleep(RETRY_DELAY_SECONDS)
-    raise AssertionError(
-        f"Action failed for selector '{selector}' after {RETRY_ATTEMPTS} attempts"
-    ) from last_error
+        except (PwTimeout, Exception) as exc:
+            last_exc = exc
+            if attempt < retries:
+                time.sleep(delay)
+    raise last_exc
 
 
-
-def fill_with_retry(page, selector: str, value: str):
-    with_retry(lambda: page.get_by_test_id(selector).fill(value), selector)
-
-
-
-def click_with_retry(page, selector: str):
-    with_retry(lambda: page.get_by_test_id(selector).click(), selector)
+# ── Selector helpers ───────────────────────────────────────────────────────────
+def tid(name: str) -> str:
+    """Return a data-testid selector string."""
+    return f"[data-testid=\"{name}\"]"
 
 
-
-def select_with_retry(page, selector: str, value: str):
-    with_retry(lambda: page.get_by_test_id(selector).select_option(value=value), selector)
-
-
-
-def assert_step_state(page, active_step: int):
-    for step in range(1, 4):
-        locator = page.get_by_test_id(f"step-{step}")
-        expected_class = re.compile(r"\bactive\b") if step == active_step else re.compile(r"^(?!.*\bactive\b).*$")
-        expect(locator).to_have_class(expected_class)
-
-    progress_steps = [page.locator(f"#prog-{i}") for i in range(1, 4)]
-    for index, locator in enumerate(progress_steps, start=1):
-        expected_class = re.compile(r"\bactive\b") if index <= active_step else re.compile(r"^(?!.*\bactive\b).*$")
-        expect(locator).to_have_class(expected_class)
+def fill_field(page, testid: str, value: str):
+    """Fill an input identified by data-testid, with retry."""
+    retry(lambda: page.locator(tid(testid)).fill(value))
 
 
+def click_button(page, testid: str):
+    """Click a button identified by data-testid, with retry."""
+    retry(lambda: page.locator(tid(testid)).click())
 
-def main():
-    form_path = Path(__file__).with_name("form.html").resolve()
-    screenshot_path = Path(__file__).with_name("success.png")
-    form_url = form_path.as_uri()
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+# ── Step assertions ────────────────────────────────────────────────────────────
+def assert_step_visible(page, step_num: int):
+    """Assert that exactly the given step panel is visible and others are not."""
+    for i in range(1, 4):
+        loc = page.locator(tid(f"step-{i}"))
+        if i == step_num:
+            retry(lambda loc=loc: expect(loc).to_be_visible())
+        else:
+            retry(lambda loc=loc: expect(loc).to_be_hidden())
+
+
+def assert_progress_bar(page, active_up_to: int):
+    """Assert progress-bar segments: active for steps ≤ active_up_to."""
+    for i in range(1, 4):
+        seg = page.locator(f"#prog-{i}")
+        if i <= active_up_to:
+            retry(lambda seg=seg: expect(seg).to_have_class("progress-step active"))
+        else:
+            retry(lambda seg=seg: expect(seg).to_have_class("progress-step"))
+
+
+# ── Main test ──────────────────────────────────────────────────────────────────
+def test_registration_form():
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
         page = browser.new_page()
-        page.goto(form_url, wait_until="domcontentloaded")
+        page.goto(FORM_PATH.as_uri())
 
-        expect(page.get_by_test_id("form-container")).to_be_visible()
-        expect(page.get_by_test_id("progress-bar")).to_be_visible()
+        # ── Step 1: Personal Info ─────────────────────────────────────────
+        assert_step_visible(page, 1)
+        assert_progress_bar(page, 1)
 
-        # Step 1
-        assert_step_state(page, 1)
-        fill_with_retry(page, "fullname", TEST_DATA["fullname"])
-        fill_with_retry(page, "email", TEST_DATA["email"])
-        fill_with_retry(page, "phone", TEST_DATA["phone"])
-        click_with_retry(page, "next-1")
+        fill_field(page, "fullname", PERSONAL["fullname"])
+        fill_field(page, "email", PERSONAL["email"])
+        fill_field(page, "phone", PERSONAL["phone"])
+        click_button(page, "next-1")
 
-        # Step 2
-        assert_step_state(page, 2)
-        fill_with_retry(page, "street", TEST_DATA["street"])
-        fill_with_retry(page, "city", TEST_DATA["city"])
-        select_with_retry(page, "state", TEST_DATA["state"])
-        fill_with_retry(page, "zip", TEST_DATA["zip"])
-        click_with_retry(page, "next-2")
+        # ── Step 2: Address ───────────────────────────────────────────────
+        assert_step_visible(page, 2)
+        assert_progress_bar(page, 2)
 
-        # Step 3
-        assert_step_state(page, 3)
-        expect(page.get_by_test_id("review-fullname")).to_have_text(TEST_DATA["fullname"])
-        expect(page.get_by_test_id("review-email")).to_have_text(TEST_DATA["email"])
-        expect(page.get_by_test_id("review-phone")).to_have_text(TEST_DATA["phone"])
-        expect(page.get_by_test_id("review-address")).to_have_text(
-            f"{TEST_DATA['street']}, {TEST_DATA['city']}, {TEST_DATA['state']} {TEST_DATA['zip']}"
+        fill_field(page, "street", ADDRESS["street"])
+        fill_field(page, "city", ADDRESS["city"])
+        retry(lambda: page.locator(tid("state")).select_option(ADDRESS["state"]))
+        fill_field(page, "zip", ADDRESS["zip"])
+        click_button(page, "next-2")
+
+        # ── Step 3: Review ────────────────────────────────────────────────
+        assert_step_visible(page, 3)
+        assert_progress_bar(page, 3)
+
+        # Verify review values match what we entered
+        retry(lambda: expect(page.locator(tid("review-fullname"))).to_have_text(PERSONAL["fullname"]))
+        retry(lambda: expect(page.locator(tid("review-email"))).to_have_text(PERSONAL["email"]))
+        retry(lambda: expect(page.locator(tid("review-phone"))).to_have_text(PERSONAL["phone"]))
+
+        expected_address = (
+            f"{ADDRESS['street']}, {ADDRESS['city']}, "
+            f"{ADDRESS['state']} {ADDRESS['zip']}"
         )
-        click_with_retry(page, "submit")
+        retry(lambda: expect(page.locator(tid("review-address"))).to_have_text(expected_address))
 
-        # Success panel
-        expect(page.get_by_test_id("success-panel")).to_be_visible()
-        submission_id = page.get_by_test_id("submission-id")
-        expect(submission_id).to_have_text(re.compile(r"^REG-[A-Z0-9]{8}$"))
-        page.screenshot(path=str(screenshot_path), full_page=True)
+        # Submit
+        click_button(page, "submit")
+
+        # ── Success panel ─────────────────────────────────────────────────
+        success = page.locator(tid("success-panel"))
+        retry(lambda: expect(success).to_be_visible())
+
+        # Step 3 should be gone, success panel shown
+        retry(lambda: expect(page.locator(tid("step-3"))).to_be_hidden())
+
+        # Submission ID present and non-empty (format: REG-XXXXXXXX)
+        sub_id_loc = page.locator(tid("submission-id"))
+        retry(lambda: expect(sub_id_loc).to_be_visible())
+        sub_id = sub_id_loc.text_content()
+        assert sub_id and sub_id.startswith("REG-"), f"Unexpected submission ID: {sub_id}"
+
+        # Screenshot the success state
+        page.screenshot(path=str(SCREENSHOT_PATH), full_page=True)
 
         browser.close()
 
+    print(f"✅ All checks passed. Submission ID: {sub_id}")
+    print(f"📸 Screenshot saved to {SCREENSHOT_PATH}")
+
 
 if __name__ == "__main__":
-    try:
-        main()
-    except PlaywrightTimeoutError as exc:
-        raise AssertionError(f"Playwright timed out: {exc}") from exc
+    test_registration_form()

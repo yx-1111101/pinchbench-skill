@@ -1,9 +1,0 @@
-This paper studies an early version of GPT-4. You can think of GPT-4 like a very smart robot helper that learned by reading a huge amount of writing. It is mostly a word machine, but it can do much more than just talk.
-
-The authors tried many hard tests to see what it could do. GPT-4 could write stories, poems, and answers in different styles. It could help with coding, solve many math problems, and do well on tests for jobs and school subjects like medicine and law. It could even make picture-drawing code and music notes. That surprised the researchers, because GPT-4 was mainly trained as a language model.
-
-A simple way to imagine it is this: if older chatbots were like kids who were good at one school subject, GPT-4 felt more like a kid who is pretty good at lots of subjects at once. It could connect ideas from different areas, follow tricky instructions, and often explain its thinking in a useful way.
-
-But the paper also says GPT-4 is not magic and not perfect. Sometimes it makes things up, which people call “hallucinations.” Sometimes it makes silly mistakes in math or logic. It can sound confident even when it is wrong. It also does not truly plan like a person in every situation, and it does not keep learning from each new chat forever.
-
-Why does this matter? Because it shows computers are getting much better at general problem solving, not just one tiny task. That could help people learn, work, write code, and create things faster. But it also means we need to be careful about mistakes, bias, and misuse. The paper’s big idea is that GPT-4 looks like an important step toward more general AI, even though it still has clear limits.

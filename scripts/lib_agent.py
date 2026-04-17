@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import platform
+import signal
 import shutil
 import stat
 import subprocess
@@ -448,6 +449,62 @@ def ensure_agent_exists(
     return True
 
 
+def _run_openclaw_subprocess(
+    cmd: List[str],
+    cwd: str,
+    timeout: float,
+) -> tuple[str, str, int, bool]:
+    """Run an openclaw command, killing the entire process group on timeout.
+
+    Uses start_new_session=True so that the openclaw process and all its
+    descendants share a process group.  On timeout we call os.killpg() instead
+    of proc.kill(), which guarantees that every orphaned child (e.g. a Claude
+    CLI call that openclaw spawned) is killed before we proceed to the next
+    task.  Without this, orphaned processes continue writing sessions.json /
+    transcript files after cleanup, causing context pollution in the next task.
+    """
+    stdout = ""
+    stderr = ""
+    exit_code = -1
+    timed_out = False
+
+    # On Windows USE_SHELL=True; start_new_session is incompatible with shell=True.
+    use_pgroup = not USE_SHELL
+
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=cwd,
+            start_new_session=use_pgroup,
+            shell=USE_SHELL,
+        )
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+            exit_code = proc.returncode
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            if use_pgroup:
+                try:
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                except (ProcessLookupError, OSError):
+                    proc.kill()
+            else:
+                proc.kill()
+            try:
+                out, err = proc.communicate(timeout=5)
+                stdout = out or ""
+                stderr = err or ""
+            except subprocess.TimeoutExpired:
+                pass
+    except FileNotFoundError as exc:
+        stderr = f"openclaw command not found: {exc}"
+
+    return stdout, stderr, exit_code, timed_out
+
+
 def cleanup_agent_sessions(agent_id: str) -> None:
     """Remove stored session transcripts for an agent to avoid unbounded growth."""
     agent_dir = _get_agent_store_dir(agent_id)
@@ -647,8 +704,9 @@ def _find_recent_session_path(agent_dir: Path, started_at: float) -> Path | None
     recent_candidates = [
         path for path in candidates if path.stat().st_mtime >= (started_at - tolerance_seconds)
     ]
-    pool = recent_candidates or candidates
-    return max(pool, key=lambda path: path.stat().st_mtime)
+    if not recent_candidates:
+        return None
+    return max(recent_candidates, key=lambda path: path.stat().st_mtime)
 
 
 def _pending_transcript_lock_paths(agent_dir: Path, resolved_session_id: str | None) -> List[Path]:
@@ -938,68 +996,28 @@ def execute_openclaw_task(
             if remaining <= 0:
                 timed_out = True
                 break
-            try:
-                result = subprocess.run(
-                    [
-                        "openclaw",
-                        "agent",
-                        "--agent",
-                        agent_id,
-                        "--session-id",
-                        session_id,
-                        "--message",
-                        session_prompt,
-                    ],
-                    capture_output=True,
-                    text=True,
-                    cwd=str(workspace),
-                    timeout=remaining,
-                    check=False,
-            shell=USE_SHELL,
-                )
-                stdout += result.stdout
-                stderr += result.stderr
-                exit_code = result.returncode
-                if result.returncode not in (0, -1):
-                    break
-            except subprocess.TimeoutExpired as exc:
+            s_out, s_err, s_code, s_timed_out = _run_openclaw_subprocess(
+                ["openclaw", "agent", "--agent", agent_id, "--session-id", session_id, "--message", session_prompt],
+                cwd=str(workspace),
+                timeout=remaining,
+            )
+            stdout += s_out
+            stderr += s_err
+            exit_code = s_code
+            if s_timed_out:
                 timed_out = True
-                stdout += _coerce_subprocess_output(exc.stdout)
-                stderr += _coerce_subprocess_output(exc.stderr)
                 break
-            except FileNotFoundError as exc:
-                stderr = f"openclaw command not found: {exc}"
+            if s_code not in (0, -1):
+                break
+            if "openclaw command not found" in s_err:
                 break
     else:
         # Single-session task: send task.prompt once
-        try:
-            result = subprocess.run(
-                [
-                    "openclaw",
-                    "agent",
-                    "--agent",
-                    agent_id,
-                    "--session-id",
-                    session_id,
-                    "--message",
-                    task.prompt,
-                ],
-                capture_output=True,
-                text=True,
-                cwd=str(workspace),
-                timeout=timeout_seconds,
-                check=False,
-            shell=USE_SHELL,
-            )
-            stdout = result.stdout
-            stderr = result.stderr
-            exit_code = result.returncode
-        except subprocess.TimeoutExpired as exc:
-            timed_out = True
-            stdout = _coerce_subprocess_output(exc.stdout)
-            stderr = _coerce_subprocess_output(exc.stderr)
-        except FileNotFoundError as exc:
-            stderr = f"openclaw command not found: {exc}"
+        stdout, stderr, exit_code, timed_out = _run_openclaw_subprocess(
+            ["openclaw", "agent", "--agent", agent_id, "--session-id", session_id, "--message", task.prompt],
+            cwd=str(workspace),
+            timeout=timeout_seconds,
+        )
 
     transcript, transcript_path = _load_transcript(agent_id, session_id, start_time)
     usage = _extract_usage_from_transcript(transcript)
@@ -1152,46 +1170,29 @@ def run_openclaw_prompt(
         if remaining <= 0:
             timed_out = True
             break
-        try:
-            openclaw_path = os.environ.get("OPENCLAW_PATH", "openclaw")
-            # On Windows, cmd.exe splits command-line arguments at literal newlines,
-            # causing the message to be truncated after the first line.
-            # Escape newlines to literal \n sequences so the full prompt is received.
-            send_chunk = (
-                chunk.replace("\r\n", "\\n").replace("\n", "\\n").replace("\r", "\\n")
-                if USE_SHELL
-                else chunk
-            )
-            result = subprocess.run(
-                [
-                    openclaw_path,
-                    "agent",
-                    "--agent",
-                    agent_id,
-                    "--session-id",
-                    session_id,
-                    "--message",
-                    send_chunk,
-                ],
-                capture_output=True,
-                text=True,
-                cwd=str(workspace),
-                timeout=remaining,
-                check=False,
-                shell=USE_SHELL,
-            )
-            stdout += result.stdout
-            stderr += result.stderr
-            exit_code = result.returncode
-            if result.returncode not in (0, -1) and not timed_out:
-                break
-        except subprocess.TimeoutExpired as exc:
+        openclaw_path = os.environ.get("OPENCLAW_PATH", "openclaw")
+        # On Windows, cmd.exe splits command-line arguments at literal newlines,
+        # causing the message to be truncated after the first line.
+        # Escape newlines to literal \n sequences so the full prompt is received.
+        send_chunk = (
+            chunk.replace("\r\n", "\\n").replace("\n", "\\n").replace("\r", "\\n")
+            if USE_SHELL
+            else chunk
+        )
+        s_out, s_err, s_code, s_timed_out = _run_openclaw_subprocess(
+            [openclaw_path, "agent", "--agent", agent_id, "--session-id", session_id, "--message", send_chunk],
+            cwd=str(workspace),
+            timeout=remaining,
+        )
+        stdout += s_out
+        stderr += s_err
+        exit_code = s_code
+        if s_timed_out:
             timed_out = True
-            stdout += _coerce_subprocess_output(exc.stdout)
-            stderr += _coerce_subprocess_output(exc.stderr)
             break
-        except FileNotFoundError as exc:
-            stderr += f"openclaw command not found: {exc}"
+        if s_code not in (0, -1):
+            break
+        if "openclaw command not found" in s_err:
             break
 
     transcript, _ = _load_transcript(agent_id, session_id, start_time)

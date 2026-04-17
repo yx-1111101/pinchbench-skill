@@ -226,6 +226,66 @@ def get_run_detail(run_id: str):
     return data
 
 
+def get_leaderboard():
+    """Return model leaderboard by score/speed/cost from latest summary per model."""
+    rows: list[dict] = []
+    for run in get_runs():
+        run_id = str(run.get("run_id") or "")
+        detail = get_run_detail(run_id)
+        if not detail:
+            continue
+
+        tasks = detail.get("tasks") or []
+        scored = [t for t in tasks if isinstance(t, dict) and t.get("grading")]
+        total_score = sum(float((t.get("grading") or {}).get("mean") or 0.0) for t in scored)
+        max_score = len(scored)
+        score_pct = (total_score / max_score * 100.0) if max_score else 0.0
+        success_task_count = sum(1 for t in tasks if (t or {}).get("status") == "success")
+
+        efficiency = detail.get("efficiency") or {}
+        total_execution_seconds = float(
+            efficiency.get("total_execution_time_seconds")
+            or sum(float((t or {}).get("execution_time") or 0.0) for t in tasks)
+        )
+        total_cost_usd = float(
+            efficiency.get("total_cost_usd")
+            or sum(float(((t or {}).get("usage") or {}).get("cost_usd") or 0.0) for t in tasks)
+        )
+
+        task_count = len(tasks)
+        avg_task_seconds = (total_execution_seconds / task_count) if task_count else 0.0
+        avg_cost_per_task_usd = (total_cost_usd / task_count) if task_count else 0.0
+
+        rows.append(
+            {
+                "run_id": run_id,
+                "model_slug": detail.get("model_slug") or run_id,
+                "model": detail.get("model") or "unknown",
+                "display_path": detail.get("viewer_display_path") or run.get("display_path") or "",
+                "timestamp": detail.get("timestamp") or run.get("timestamp"),
+                "task_count": task_count,
+                "success_task_count": success_task_count,
+                "total_score": round(total_score, 3),
+                "max_score": max_score,
+                "score_pct": round(score_pct, 2),
+                "total_execution_seconds": round(total_execution_seconds, 2),
+                "avg_task_seconds": round(avg_task_seconds, 2),
+                "total_cost_usd": round(total_cost_usd, 6),
+                "avg_cost_per_task_usd": round(avg_cost_per_task_usd, 6),
+            }
+        )
+
+    rows.sort(
+        key=lambda r: (
+            -float(r.get("score_pct") or 0.0),
+            float(r.get("avg_task_seconds") or 0.0),
+            float(r.get("total_cost_usd") or 0.0),
+            -float(r.get("timestamp") or 0.0),
+        )
+    )
+    return rows
+
+
 def _compute_efficiency_summary(task_entries: list[dict]) -> dict:
     total_tokens = sum(int((t.get("usage") or {}).get("total_tokens") or 0) for t in task_entries)
     total_input_tokens = sum(int((t.get("usage") or {}).get("input_tokens") or 0) for t in task_entries)
@@ -368,17 +428,28 @@ def _run_task_rerun_worker(job_id: str, run_id: str, task_id: str, model: str) -
             str(tmp_dir),
             "--no-upload",
             "--no-fail-fast",
+            "--timeout-multiplier",
+            "2",
         ]
         env = os.environ.copy()
         env["PINCHBENCH_RUN_SCOPE"] = "temp"
-        proc = subprocess.run(
-            cmd,
-            cwd=str(Path(__file__).parent),
-            capture_output=True,
-            text=True,
-            check=False,
-            env=env,
-        )
+        # 30-minute hard cap: single-task execute+grade should never need more.
+        # Without this, a hung task leaves the worker thread blocked forever and
+        # the UI shows "运行中..." indefinitely.
+        try:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(Path(__file__).parent),
+                capture_output=True,
+                text=True,
+                check=False,
+                env=env,
+                timeout=1800,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"rerun timed out after 30 minutes (task may need a higher --timeout-multiplier)"
+            ) from exc
         result_files = sorted(tmp_dir.glob("*.json"))
         if not result_files:
             summary_path = tmp_dir / "summary.json"
@@ -803,7 +874,33 @@ HTML = r"""<!DOCTYPE html>
   .oc-vsep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
 
   /* ── Sidebar runs ── */
-  #sidebar-header { padding: 12px 14px 8px; font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+  #sidebar-header {
+    padding: 10px 12px 8px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  #sidebar-header .sidebar-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .sidebar-btn {
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .sidebar-btn:hover { border-color: var(--oc-coral); color: var(--oc-coral); background: var(--surface); }
   #run-list { overflow-y: auto; flex: 1; }
   .run-item { padding: 11px 14px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.15s; }
   .run-item:hover { background: var(--surface2); }
@@ -1247,6 +1344,27 @@ HTML = r"""<!DOCTYPE html>
   #empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted); gap: 10px; }
   #empty-state .em-icon { font-size: 3rem; }
   .loading { text-align: center; padding: 40px; color: var(--muted); }
+  .leaderboard-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .leaderboard-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .leaderboard-meta { font-size: 0.76rem; color: var(--muted); }
+  .leaderboard-sort { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .leaderboard-btn { border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: 999px; padding: 5px 10px; font-size: 0.72rem; cursor: pointer; }
+  .leaderboard-btn:hover { border-color: var(--oc-coral); color: var(--oc-coral); }
+  .leaderboard-btn.active { background: var(--oc-coral-soft); border-color: #efc9c9; color: var(--oc-coral); font-weight: 600; }
+  .leaderboard-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+  .leaderboard-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .leaderboard-table th, .leaderboard-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  .leaderboard-table th { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; background: var(--surface2); position: sticky; top: 0; z-index: 1; }
+  .leaderboard-table tr:last-child td { border-bottom: none; }
+  .leaderboard-table .mono { font-family: var(--mono); font-size: 0.72rem; }
+  .leaderboard-table .model-name { max-width: 340px; overflow: hidden; text-overflow: ellipsis; }
+  .leaderboard-table .is-link { color: var(--oc-coral); cursor: pointer; font-weight: 600; }
+  .leaderboard-table .is-link:hover { text-decoration: underline; }
+  .leaderboard-empty { padding: 28px 12px; text-align: center; color: var(--muted); }
+  .leaderboard-top { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .leaderboard-top-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .leaderboard-top-card .k { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .leaderboard-top-card .v { margin-top: 4px; font-size: 0.86rem; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* ── Scrollbar ── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -1292,7 +1410,10 @@ HTML = r"""<!DOCTYPE html>
 <div id="app">
   <!-- Sidebar -->
   <div id="sidebar">
-    <div id="sidebar-header">运行记录</div>
+    <div id="sidebar-header">
+      <div class="sidebar-title">运行记录</div>
+      <button type="button" class="sidebar-btn" id="sidebar-leaderboard-btn">🏆 榜单</button>
+    </div>
     <div id="run-list"><div class="loading">加载中...</div></div>
   </div>
 
@@ -1301,8 +1422,8 @@ HTML = r"""<!DOCTYPE html>
     <!-- Task grid view -->
     <div id="task-panel">
       <div id="empty-state">
-        <div class="em-icon">📊</div>
-        <div>从左侧选择一个运行记录</div>
+        <div class="em-icon">🏆</div>
+        <div>加载模型榜单中...</div>
       </div>
     </div>
 
@@ -1361,6 +1482,7 @@ let currentRunData = null;
 let currentTaskId = null;
 let currentTranscriptData = null;
 let rerunJobs = {};
+let leaderboardSortBy = 'score';
 
 function setSubbarVisible(show) {
   const el = document.getElementById('oc-subbar');
@@ -1472,6 +1594,12 @@ function setupChromeHandlers() {
   document.getElementById('oc-search-pill')?.addEventListener('click', () => {
     /* 占位：与 OpenClaw 搜索条视觉一致 */
   });
+  document.getElementById('sidebar-leaderboard-btn')?.addEventListener('click', () => {
+    showLeaderboard().catch(err => {
+      const panel = document.getElementById('task-panel');
+      if (panel) panel.innerHTML = `<div class="loading">加载榜单失败: ${escHtml(err.message || String(err))}</div>`;
+    });
+  });
   window.addEventListener('keydown', (ev) => {
     if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 'k') {
       ev.preventDefault();
@@ -1507,7 +1635,7 @@ async function init() {
   setupChromeHandlers();
   const runs = await apiFetch('/api/runs');
   renderRunList(runs);
-  setSubbarVisible(false);
+  await showLeaderboard();
 }
 
 async function apiFetch(path) {
@@ -1546,6 +1674,163 @@ function rerunLabel(taskId) {
   if (job.status === 'completed') return '已更新';
   if (job.status === 'failed') return '重试失败';
   return '重新运行';
+}
+
+function leaderboardComparator(sortBy) {
+  if (sortBy === 'speed') {
+    return (a, b) => (a.avg_task_seconds || 0) - (b.avg_task_seconds || 0)
+      || (b.score_pct || 0) - (a.score_pct || 0)
+      || (a.total_cost_usd || 0) - (b.total_cost_usd || 0);
+  }
+  if (sortBy === 'cost') {
+    return (a, b) => (a.total_cost_usd || 0) - (b.total_cost_usd || 0)
+      || (b.score_pct || 0) - (a.score_pct || 0)
+      || (a.avg_task_seconds || 0) - (b.avg_task_seconds || 0);
+  }
+  return (a, b) => (b.score_pct || 0) - (a.score_pct || 0)
+    || (a.avg_task_seconds || 0) - (b.avg_task_seconds || 0)
+    || (a.total_cost_usd || 0) - (b.total_cost_usd || 0);
+}
+
+function sortLeaderboardRows(rows) {
+  return [...(rows || [])].sort(leaderboardComparator(leaderboardSortBy));
+}
+
+function formatTime(sec) {
+  if (sec == null || Number.isNaN(sec)) return '—';
+  return `${Number(sec).toFixed(2)}s`;
+}
+
+function formatCurrency(v, digits = 4) {
+  if (v == null || Number.isNaN(v)) return '—';
+  return `$${Number(v).toFixed(digits)}`;
+}
+
+function renderLeaderboard(rows) {
+  const panel = document.getElementById('task-panel');
+  if (!panel) return;
+  const sorted = sortLeaderboardRows(rows);
+  const newestTs = Math.max(...sorted.map(r => Number(r.timestamp || 0)), 0);
+  const newestText = newestTs ? new Date(newestTs * 1000).toLocaleString('zh-CN') : '—';
+  const sortLabel = leaderboardSortBy === 'speed' ? '速度优先（平均耗时更低）'
+    : leaderboardSortBy === 'cost' ? '成本优先（总费用更低）'
+    : '得分优先（综合得分更高）';
+
+  if (!sorted.length) {
+    panel.innerHTML = `
+      <div class="leaderboard-wrap">
+        <div class="leaderboard-head">
+          <div class="section-title" style="margin-bottom:0">模型榜单</div>
+          <div class="leaderboard-meta">暂无可用评测结果</div>
+        </div>
+        <div class="leaderboard-empty">先跑完至少一个模型的 benchmark，再回来查看榜单。</div>
+      </div>
+    `;
+    return;
+  }
+
+  const bestScore = sortLeaderboardRows(rows)[0];
+  const bestSpeed = [...sorted].sort(leaderboardComparator('speed'))[0];
+  const bestCost = [...sorted].sort(leaderboardComparator('cost'))[0];
+  const topCards = `
+    <div class="leaderboard-top">
+      <div class="leaderboard-top-card">
+        <div class="k">得分最佳</div>
+        <div class="v">${escHtml(bestScore.model_slug || bestScore.run_id)} · ${(bestScore.score_pct || 0).toFixed(2)}%</div>
+      </div>
+      <div class="leaderboard-top-card">
+        <div class="k">速度最佳</div>
+        <div class="v">${escHtml(bestSpeed.model_slug || bestSpeed.run_id)} · ${formatTime(bestSpeed.avg_task_seconds)}</div>
+      </div>
+      <div class="leaderboard-top-card">
+        <div class="k">成本最佳</div>
+        <div class="v">${escHtml(bestCost.model_slug || bestCost.run_id)} · ${formatCurrency(bestCost.total_cost_usd, 6)}</div>
+      </div>
+    </div>
+  `;
+
+  const rowsHtml = sorted.map((r, idx) => {
+    const scorePct = Number(r.score_pct || 0);
+    const scoreClass = scorePct >= 80 ? 'score-high' : scorePct >= 50 ? 'score-mid' : 'score-low';
+    return `
+    <tr>
+      <td>${idx + 1}</td>
+      <td class="mono is-link" onclick="selectRun('${String(r.run_id || '')}')">${escHtml(String(r.model_slug || r.run_id || ''))}</td>
+      <td class="model-name" title="${escHtml(String(r.model || ''))}">${escHtml(String(r.model || '—'))}</td>
+      <td><span class="${scoreClass}">${scorePct.toFixed(2)}%</span> (${Number(r.total_score || 0).toFixed(2)}/${Number(r.max_score || 0)})</td>
+      <td>${formatTime(Number(r.avg_task_seconds || 0))}</td>
+      <td>${formatTime(Number(r.total_execution_seconds || 0))}</td>
+      <td>${formatCurrency(Number(r.total_cost_usd || 0), 6)}</td>
+      <td>${formatCurrency(Number(r.avg_cost_per_task_usd || 0), 6)}</td>
+      <td>${Number(r.success_task_count || 0)}/${Number(r.task_count || 0)}</td>
+      <td>${Number(r.task_count || 0)}</td>
+      <td>${r.timestamp ? new Date(Number(r.timestamp) * 1000).toLocaleDateString('zh-CN') : '—'}</td>
+    </tr>
+  `;
+  }).join('');
+
+  panel.innerHTML = `
+    <div class="leaderboard-wrap">
+      <div class="leaderboard-head">
+        <div>
+          <div class="section-title" style="margin-bottom:4px">模型榜单</div>
+          <div class="leaderboard-meta">按「得分 / 速度 / 成本」对比各模型最新评测 · 最新数据 ${newestText}</div>
+        </div>
+        <div class="leaderboard-sort">
+          <span class="leaderboard-meta">排序：</span>
+          <button type="button" class="leaderboard-btn ${leaderboardSortBy === 'score' ? 'active' : ''}" onclick="setLeaderboardSort('score')">得分</button>
+          <button type="button" class="leaderboard-btn ${leaderboardSortBy === 'speed' ? 'active' : ''}" onclick="setLeaderboardSort('speed')">速度</button>
+          <button type="button" class="leaderboard-btn ${leaderboardSortBy === 'cost' ? 'active' : ''}" onclick="setLeaderboardSort('cost')">成本</button>
+        </div>
+      </div>
+      ${topCards}
+      <div class="leaderboard-meta" style="margin-bottom:8px">${sortLabel}</div>
+      <div class="leaderboard-table-wrap">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>模型Slug</th>
+              <th>模型</th>
+              <th>得分</th>
+              <th>平均耗时</th>
+              <th>总耗时</th>
+              <th>总成本</th>
+              <th>单任务成本</th>
+              <th>成功任务</th>
+              <th>任务数</th>
+              <th>日期</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function showLeaderboard() {
+  const panel = document.getElementById('task-panel');
+  if (!panel) return;
+  currentRunId = null;
+  currentRunData = null;
+  currentTaskId = null;
+  currentTranscriptData = null;
+  document.querySelectorAll('.run-item').forEach(e => e.classList.remove('active'));
+  panel.style.display = 'block';
+  document.getElementById('detail-pane').classList.remove('open');
+  document.getElementById('back-btn').style.display = 'none';
+  setSubbarVisible(false);
+  document.getElementById('oc-page-title').textContent = '榜单';
+  panel.innerHTML = '<div class="loading">加载榜单...</div>';
+  const rows = await apiFetch('/api/leaderboard');
+  renderLeaderboard(rows);
+}
+
+async function setLeaderboardSort(sortBy) {
+  leaderboardSortBy = sortBy;
+  const rows = await apiFetch('/api/leaderboard');
+  renderLeaderboard(rows);
 }
 
 function renderDetailActions(task) {
@@ -3011,6 +3296,9 @@ class Handler(BaseHTTPRequestHandler):
             # ── API routes ──────────────────────────────────────────────────
             if path == "/api/runs":
                 self.send_json(get_runs())
+
+            elif path == "/api/leaderboard":
+                self.send_json(get_leaderboard())
 
             elif re.match(r"^/api/runs/[\w-]+$", path):
                 run_id = path.split("/")[-1]
