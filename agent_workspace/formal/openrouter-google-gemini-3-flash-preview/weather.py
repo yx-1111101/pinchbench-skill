@@ -6,49 +6,52 @@ from __future__ import annotations
 import json
 import sys
 import urllib.error
-import urllib.parse
 import urllib.request
 
-CITY = "San Francisco"
-URL = "https://wttr.in/{}?format=j1".format(urllib.parse.quote(CITY))
+API_URL = "https://wttr.in/San%20Francisco?format=j1"
+TIMEOUT_SECONDS = 10
 
 
-def fetch_weather(url: str) -> dict:
+def fetch_weather() -> dict:
     request = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": "weather-summary-script/1.0",
-            "Accept": "application/json",
-        },
+        API_URL,
+        headers={"User-Agent": "weather-summary-script/1.0"},
     )
-    with urllib.request.urlopen(request, timeout=10) as response:
+    with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
         return json.load(response)
 
 
-def main() -> int:
-    try:
-        data = fetch_weather(URL)
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        print(f"Failed to fetch weather data: {exc}", file=sys.stderr)
-        return 1
-
+def build_summary(data: dict) -> str:
     current = data["current_condition"][0]
     today = data["weather"][0]
-    desc = current["weatherDesc"][0]["value"]
-    temp_f = current["temp_F"]
+
+    description = current["weatherDesc"][0]["value"]
+    temperature_f = current["temp_F"]
     feels_like_f = current["FeelsLikeF"]
     humidity = current["humidity"]
     wind_mph = current["windspeedMiles"]
     high_f = today["maxtempF"]
     low_f = today["mintempF"]
 
-    print(
-        f"San Francisco weather: {desc}, {temp_f}°F "
+    return (
+        "San Francisco weather: "
+        f"{description}, {temperature_f}°F "
         f"(feels like {feels_like_f}°F). "
-        f"Humidity is {humidity}% with winds around {wind_mph} mph. "
-        f"Today's high is {high_f}°F and low is {low_f}°F."
+        f"High {high_f}°F, low {low_f}°F. "
+        f"Humidity {humidity}%. Wind {wind_mph} mph."
     )
-    return 0
+
+
+def main() -> int:
+    try:
+        data = fetch_weather()
+        print(build_summary(data))
+        return 0
+    except urllib.error.URLError as exc:
+        print(f"Failed to fetch weather data: {exc}", file=sys.stderr)
+    except (KeyError, IndexError, json.JSONDecodeError) as exc:
+        print(f"Failed to parse weather data: {exc}", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":
