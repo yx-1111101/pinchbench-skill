@@ -32,8 +32,8 @@ uv run benchmark.py --model anthropic/claude-sonnet-4 --suite automated-only
 # Run specific tasks
 uv run benchmark.py --model anthropic/claude-sonnet-4 --suite task_01_calendar,task_02_stock
 
-# Skip uploading results
-uv run benchmark.py --model anthropic/claude-sonnet-4 --no-upload
+# Upload results only when needed
+uv run benchmark.py --model anthropic/claude-sonnet-4 --auto-upload
 ```
 
 ## Available Tasks (23)
@@ -73,7 +73,8 @@ uv run benchmark.py --model anthropic/claude-sonnet-4 --no-upload
 | `--output-dir` | Results directory (default: `results/`) |
 | `--timeout-multiplier` | Scale task timeouts for slower models |
 | `--runs` | Number of runs per task for averaging |
-| `--no-upload` | Skip uploading to leaderboard |
+| `--auto-upload` | Upload results to leaderboard after the run completes |
+| `--no-upload` | Deprecated compatibility flag; uploads are skipped by default |
 | `--register` | Request new API token for submissions |
 | `--upload FILE` | Upload previous results JSON |
 
@@ -85,7 +86,7 @@ To submit results to the leaderboard:
 # Register for an API token (one-time)
 uv run benchmark.py --register
 
-# Run benchmark (auto-uploads with token)
+# Run benchmark locally by default
 uv run benchmark.py --model anthropic/claude-sonnet-4
 ```
 

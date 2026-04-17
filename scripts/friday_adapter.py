@@ -1,8 +1,10 @@
 """
-Friday Adapter — extends PinchBench to support OpenFriday-style tasks.
+Friday Adapter — thin OpenFriday-specific hooks for PinchBench.
 
-This module provides subclasses and wrapper functions that integrate OpenFriday
-tasks into PinchBench without modifying PinchBench's original source code.
+The shared benchmark flow now lives in ``benchmark.py`` and ``lib_tasks.py``.
+This module only keeps the two Friday-specific behaviors:
+1. Recursively discover tasks under ``tasks/<scene>/task_*.md``
+2. Overlay ``dataset_dir`` contents into the prepared workspace
 
 Usage:
     from friday_adapter import FridayTaskLoader, prepare_friday_workspace
@@ -11,48 +13,26 @@ Usage:
 from __future__ import annotations
 
 import logging
-import os
-import stat
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List
 
 from lib_tasks import Task, TaskLoader
-from lib_agent import (
-    _get_agent_workspace,
-    _get_agent_store_dir,
-    prepare_task_workspace,
-)
+from lib_agent import prepare_task_workspace
 
 logger = logging.getLogger(__name__)
 
 
 class FridayTaskLoader(TaskLoader):
-    """TaskLoader that supports subdirectory scanning for OpenFriday scene layout.
+    """TaskLoader that recursively discovers Friday tasks.
 
-    PinchBench's original TaskLoader uses a flat ``glob("task_*.md")``.
-    This subclass uses ``rglob`` so tasks organised as
-    ``tasks/{scene}/task_*.md`` are discovered alongside flat tasks.
+    PinchBench's base loader uses a flat ``glob("task_*.md")``.
+    OpenFriday tasks live one level deeper at ``tasks/<scene>/task_*.md``,
+    so this subclass swaps in ``rglob``. Template/category filtering is
+    handled by the base class.
     """
 
-    def load_all_tasks(self, category_filter: Optional[str] = None) -> List[Task]:
-        tasks = []
-        task_files = sorted(self.tasks_dir.rglob("task_*.md"))
-        logger.info("FridayTaskLoader found %d task files (rglob)", len(task_files))
-
-        for task_file in task_files:
-            try:
-                task = self.load_task(task_file)
-                if "_XX_" in task.task_id or task.task_id == "task_XX_name":
-                    continue
-                if category_filter and task.category != category_filter:
-                    continue
-                tasks.append(task)
-                logger.info("Loaded task: %s", task.task_id)
-            except Exception as e:
-                logger.error("Failed to load %s: %s", task_file, e, exc_info=True)
-
-        logger.info("FridayTaskLoader: %d tasks loaded", len(tasks))
-        return tasks
+    def _discover_task_files(self) -> List[Path]:
+        return sorted(self.tasks_dir.rglob("task_*.md"))
 
 
 def prepare_friday_workspace(

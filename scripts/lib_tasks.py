@@ -80,11 +80,32 @@ class TaskLoader:
         self.tasks_dir = tasks_dir
         logger.info(f"Initialized TaskLoader with directory: {tasks_dir}")
     
-    def load_all_tasks(self) -> List[Task]:
+    def _discover_task_files(self) -> List[Path]:
+        """Return the ordered list of task files to load.
+
+        Subclasses can override this (e.g. to use ``rglob``) without
+        re-implementing template/category filtering.
+        """
+        return sorted(self.tasks_dir.glob("task_*.md"))
+
+    def _task_group_for_path(self, task_file: Path) -> str:
+        """Return a stable grouping key for a task based on its directory."""
+        try:
+            rel = task_file.relative_to(self.tasks_dir)
+        except ValueError:
+            return "pinchbench"
+        return rel.parts[0] if len(rel.parts) > 1 else "pinchbench"
+
+    def _matches_category_filter(self, task: Task, category_filter: str) -> bool:
+        group = str((task.frontmatter or {}).get("_task_group") or "").strip()
+        category = str(task.category or "").strip()
+        return category_filter in {group, category}
+
+    def load_all_tasks(self, category_filter: Optional[str] = None) -> List[Task]:
         """Load all task files from the tasks directory."""
         tasks = []
-        task_files = sorted(self.tasks_dir.glob("task_*.md"))
-        
+        task_files = self._discover_task_files()
+
         logger.info(f"Found {len(task_files)} task files")
         
         for task_file in task_files:
@@ -92,6 +113,9 @@ class TaskLoader:
                 task = self.load_task(task_file)
                 if "_XX_" in task.task_id or task.task_id == "task_XX_name":
                     logger.debug("Skipping template task: %s", task.task_id)
+                    continue
+                if category_filter and not self._matches_category_filter(task, category_filter):
+                    logger.debug("Skipping task outside category filter: %s", task.task_id)
                     continue
                 tasks.append(task)
                 logger.info(f"Successfully loaded task: {task.task_id}")
@@ -120,6 +144,8 @@ class TaskLoader:
             metadata = yaml.safe_load(frontmatter_text)
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML frontmatter in {task_file}: {e}")
+        metadata = metadata or {}
+        metadata["_task_group"] = self._task_group_for_path(task_file)
         
         # Extract sections from body
         sections = self._parse_sections(body_text)

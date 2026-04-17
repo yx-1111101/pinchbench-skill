@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 # This file lives in pinchbench-skill/scripts/ — keep structured results next to legacy
@@ -16,6 +17,13 @@ def normalize_scope(scope: str | None) -> str:
     return value if value in {"formal", "temp"} else "formal"
 
 
+def normalize_result_key(result_key: str | None) -> str:
+    value = (result_key or "all").strip().lower()
+    value = re.sub(r"[^a-z0-9_-]+", "-", value)
+    value = re.sub(r"-{2,}", "-", value).strip("-_")
+    return value or "all"
+
+
 def agent_task_workspace(scope: str, model_slug: str, task_id: str) -> Path:
     return AGENT_WORKSPACE_ROOT / normalize_scope(scope) / model_slug / task_id
 
@@ -24,17 +32,20 @@ def agent_model_workspace(scope: str, model_slug: str) -> Path:
     return AGENT_WORKSPACE_ROOT / normalize_scope(scope) / model_slug
 
 
-def results_model_dir(scope: str, model_slug: str) -> Path:
-    """One canonical result tree per model per scope (no numeric run subfolder)."""
-    return RESULTS_ROOT / normalize_scope(scope) / model_slug
+def results_model_dir(scope: str, model_slug: str, result_key: str | None = None) -> Path:
+    """One canonical result tree per model/result-key per scope."""
+    root = RESULTS_ROOT / normalize_scope(scope) / model_slug
+    if result_key is None:
+        return root
+    return root / normalize_result_key(result_key)
 
 
-def results_summary_path(scope: str, model_slug: str) -> Path:
-    return results_model_dir(scope, model_slug) / "summary.json"
+def results_summary_path(scope: str, model_slug: str, result_key: str | None = None) -> Path:
+    return results_model_dir(scope, model_slug, result_key) / "summary.json"
 
 
-def results_transcripts_dir(scope: str, model_slug: str) -> Path:
-    return results_model_dir(scope, model_slug) / "transcripts"
+def results_transcripts_dir(scope: str, model_slug: str, result_key: str | None = None) -> Path:
+    return results_model_dir(scope, model_slug, result_key) / "transcripts"
 
 
 def iter_summary_paths(scope: str | None = None) -> list[Path]:

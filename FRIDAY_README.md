@@ -7,13 +7,13 @@
 ```
 pinchbench-skill/
 ├── scripts/
-│   ├── benchmark.py              # PinchBench 原始入口（已扩展两阶段模式）
-│   ├── friday_benchmark.py       # Friday 评测入口（新增）
-│   ├── friday_adapter.py         # 适配层：扩展任务加载 + workspace 处理（新增）
+│   ├── benchmark.py              # 通用评测入口（已支持 category / result_key / 两阶段模式）
+│   ├── friday_benchmark.py       # Friday 兼容入口：仅保留递归任务发现 + dataset_dir 注入
+│   ├── friday_adapter.py         # Friday 适配层：递归加载任务 + workspace 叠加 dataset_dir
 │   ├── convert_friday_tasks.py   # 任务格式转换工具（新增）
 │   ├── lib_agent.py              # PinchBench OpenClaw 执行引擎（已增强 transcript 等待）
 │   ├── lib_grading.py            # PinchBench 评分引擎（未修改）
-│   └── lib_tasks.py              # PinchBench 任务加载（未修改）
+│   └── lib_tasks.py              # 通用任务加载（已支持 category 过滤，可被 Friday loader 复用）
 ├── tasks/
 │   ├── task_00_sanity.md         # PinchBench 原始 27 个任务
 │   ├── task_01_calendar.md
@@ -33,20 +33,26 @@ pinchbench-skill/
 
 ### 工作原理
 
-```
+```text
+benchmark.py
+  │
+  ├── 负责通用链路：
+  │   参数解析 / 执行 / 评分 / 两阶段模式 / 结果写入 / 上传
+  │
+  ├── 默认使用 TaskLoader
+  │   扫描 tasks/task_*.md
+  │
+  └── 支持注入自定义 BenchmarkRunner / TaskLoader
+
 friday_benchmark.py
   │
-  ├── 使用 FridayTaskLoader（递归扫描子目录）
+  ├── 替换成 FridayTaskLoader
+  │   递归扫描 tasks/<scene>/task_*.md
   │
   ├── monkey-patch prepare_task_workspace
-  │   添加 dataset_dir 批量拷贝支持
+  │   额外把 frontmatter 中的 dataset_dir 整体拷入 workspace
   │
-  └── 复用 PinchBench 全部基础设施：
-      ├── openclaw CLI 调用 (openclaw agent --message ...)
-      ├── 评分引擎 (automated / llm_judge / hybrid)
-      ├── 日志 (benchmark.log + stdout)
-      ├── 结果 JSON (results/ 目录)
-      └── 排行榜上传
+  └── 其余全部直接复用 benchmark.py
 ```
 
 ## 前置条件
@@ -82,39 +88,54 @@ pip install pyyaml>=6.0.1
 ```bash
 # 跑全部 97 个任务（PinchBench 27 + OpenFriday 70）
 uv run scripts/friday_benchmark.py \
-  --model anthropic/claude-sonnet-4 \
-  --no-upload
+  --model anthropic/claude-sonnet-4
 
 # 跑原始 PinchBench 27 个任务（不变）
 uv run scripts/benchmark.py \
   --model anthropic/claude-sonnet-4
 ```
 
-### PinchBench 两阶段运行
+### 两阶段运行
 
-仅 `scripts/benchmark.py` 支持两阶段模式，`scripts/friday_benchmark.py` 目前仍是单阶段执行+评分。
+`scripts/benchmark.py` 和 `scripts/friday_benchmark.py` 现在都复用同一套两阶段执行/评分逻辑；对于 Friday 任务，兼容入口只额外处理递归任务发现和 `dataset_dir` workspace 注入。
 
 ```bash
-# 第 1 步：只执行任务，归档评分依赖文件
-uv run scripts/benchmark.py \
+# 第 1 步：只执行 Friday 任务，归档评分依赖文件
+uv run scripts/friday_benchmark.py \
   --model anthropic/claude-sonnet-4 \
-  --execute-only \
-  --no-upload
+  --execute-only
 
-# 第 2 步：基于 results/... 下已归档的 artifacts 计算评分
-uv run scripts/benchmark.py \
+# 第 2 步：基于默认结果目录下已归档的 artifacts 计算评分
+uv run scripts/friday_benchmark.py \
   --model anthropic/claude-sonnet-4 \
-  --grade-only \
-  --no-upload
+  --grade-only
 ```
 
-两阶段模式的设计目标是和原有结果路径保持一致：
+现在结果会按 `result_key` 分目录，避免不同类别/过滤条件互相覆盖：
 
-- `summary.json` 仍写到原来的 `results/<scope>/<model_slug>/summary.json`
-- `transcripts/` 仍写到原来的 `results/<scope>/<model_slug>/transcripts/`
-- 仅额外增加 `results/<scope>/<model_slug>/artifacts/`
+- `summary.json` 写到 `results/<scope>/<model_slug>/<result_key>/summary.json`
+- `transcripts/` 写到 `results/<scope>/<model_slug>/<result_key>/transcripts/`
+- `artifacts/` 写到 `results/<scope>/<model_slug>/<result_key>/artifacts/`
+- `result_key` 默认由参数自动推导：优先取 `--category`，否则基于 `--suite` 推导（默认 `all`）
 - `--execute-only` 会先写一个带 `grading_pending: true` 的 `summary.json`
-- `--grade-only` 会基于同目录下的 `artifacts/` 重新评分，并覆盖为最终版 `summary.json`
+- `--grade-only` 默认会回到同一个 `result_key` 对应目录下，自动找到 `artifacts/` 并覆盖写回最终版 `summary.json`
+- 只有在你想手动指定其他归档目录时，才需要额外传 `--artifacts-dir`
+
+例如：
+
+```bash
+# foundation 会落到 results/formal/<model_slug>/foundation/
+uv run scripts/friday_benchmark.py \
+  --model anthropic/claude-sonnet-4 \
+  --category foundation \
+  --grade-only
+
+# 已迁移的旧 PinchBench 27 任务如果放在 pinchbench/ 下，可这样重算
+uv run scripts/benchmark.py \
+  --model anthropic/claude-sonnet-4 \
+  --category pinchbench \
+  --grade-only
+```
 
 ### 按场景分类跑
 
@@ -122,38 +143,32 @@ uv run scripts/benchmark.py \
 # 基础能力层（15 个任务）
 uv run scripts/friday_benchmark.py \
   --model anthropic/claude-sonnet-4 \
-  --category foundation \
-  --no-upload
+  --category foundation
 
 # 高级秘书（11 个任务）
 uv run scripts/friday_benchmark.py \
   --model anthropic/claude-sonnet-4 \
-  --category secretary \
-  --no-upload
+  --category secretary
 
 # AI 程序员（12 个任务）
 uv run scripts/friday_benchmark.py \
   --model anthropic/claude-sonnet-4 \
-  --category programmer \
-  --no-upload
+  --category programmer
 
 # 全域运营（13 个任务）
 uv run scripts/friday_benchmark.py \
   --model anthropic/claude-sonnet-4 \
-  --category operator \
-  --no-upload
+  --category operator
 
 # 金融伙伴（9 个任务）
 uv run scripts/friday_benchmark.py \
   --model anthropic/claude-sonnet-4 \
-  --category finance \
-  --no-upload
+  --category finance
 
 # 数字分身（10 个任务）
 uv run scripts/friday_benchmark.py \
   --model anthropic/claude-sonnet-4 \
-  --category digital_twin \
-  --no-upload
+  --category digital_twin
 ```
 
 ### 跑单个任务
@@ -161,8 +176,7 @@ uv run scripts/friday_benchmark.py \
 ```bash
 uv run scripts/friday_benchmark.py \
   --model anthropic/claude-sonnet-4 \
-  --suite task_f_01_web_search \
-  --no-upload
+  --suite task_f_01_web_search
 ```
 
 ### 使用自定义 API 端点
@@ -171,8 +185,7 @@ uv run scripts/friday_benchmark.py \
 uv run scripts/friday_benchmark.py \
   --model your-model-id \
   --base-url https://your-api.com/v1 \
-  --api-key sk-xxx \
-  --no-upload
+  --api-key sk-xxx
 ```
 
 ### 启用 LLM Judge
@@ -182,11 +195,12 @@ hybrid 和 llm_judge 类型的任务需要 Judge 模型才能获得完整评分�
 ```bash
 uv run scripts/friday_benchmark.py \
   --model anthropic/claude-sonnet-4 \
-  --judge openai/gpt-4o \
-  --no-upload
+  --judge openai/gpt-4o
 ```
 
 不传 `--judge` 时，hybrid 任务只跑 automated 部分。
+
+默认不会自动上传排行榜；只有显式传入 `--auto-upload` 才会上传，因此通常不需要再写 `--no-upload`。
 
 ## 场景任务一览
 
@@ -198,6 +212,7 @@ uv run scripts/friday_benchmark.py \
 | `operator` | 13 | 热点调研、内容改写、视频脚本、数据洞察… | 全部 hybrid |
 | `finance` | 9 | 股票报价、研报摘要、账单分类、预算规划… | automated + hybrid |
 | `digital_twin` | 10 | 人设构建、风格提取、代我回复、一致性检验… | 全部 hybrid |
+| `pinchbench` | 27 | 原始 PinchBench 任务集 | mixed |
 | 不传 | 97 | 以上全部 + PinchBench 原始 27 个 | 混合 |
 
 ## 评分机制
@@ -227,6 +242,7 @@ ls results/
 # 格式示例
 {
   "model": "anthropic/claude-sonnet-4",
+  "result_key": "foundation",
   "category": "foundation",
   "tasks": [
     {
@@ -241,10 +257,10 @@ ls results/
 }
 ```
 
-对于 `scripts/benchmark.py` 的两阶段模式，同一模型目录下还会额外出现：
+对于两阶段模式，同一模型 + result_key 目录下会出现：
 
 ```bash
-results/formal/<model_slug>/
+results/formal/<model_slug>/<result_key>/
 ├── summary.json
 ├── transcripts/
 └── artifacts/
@@ -257,16 +273,17 @@ results/formal/<model_slug>/
 
 说明：
 
-- 默认单阶段模式和旧版保持兼容，只是多出 `artifacts/`
+- 默认单阶段模式也会写入同一个 `result_key` 目录，并保留 `artifacts/`
 - `summary.json` 中的 `workspace` 字段仍保持原有风格，不会改成 artifact 路径
 - 评分阶段实际读取的是 `artifacts/.../workspace/`
+- viewer 会把不同 `result_key`（如 `pinchbench`、`foundation`）作为独立结果项展示
 
 ## 全部 CLI 参数
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | `--model` | 必填 | 模型 ID（如 `anthropic/claude-sonnet-4`） |
-| `--category` | 无（跑全部） | 场景过滤：foundation / secretary / programmer / operator / finance / digital_twin |
+| `--category` | 无（跑全部） | 场景过滤：pinchbench / foundation / secretary / programmer / operator / finance / digital_twin |
 | `--suite` | `all` | 任务过滤：`all` / `automated-only` / 逗号分隔的 task_id |
 | `--base-url` | 无 | 自定义 API 端点（跳过 OpenRouter 验证） |
 | `--api-key` | `$OPENAI_API_KEY` | 自定义端点的 API Key |
@@ -278,7 +295,8 @@ results/formal/<model_slug>/
 | `--grade-only` | 关 | 只基于已归档 artifacts 评分，不重新执行任务 |
 | `--artifacts-dir` | 自动推导 | 自定义 artifacts 目录；默认在对应 `results/.../artifacts/` 下 |
 | `--verbose` / `-v` | 关 | 详细日志 |
-| `--no-upload` | 关 | 跳过上传排行榜 |
+| `--auto-upload` | 关 | 评测完成后自动上传排行榜 |
+| `--no-upload` | 兼容保留 | 旧参数；现在默认就不会上传 |
 | `--no-fail-fast` | 关 | sanity check 失败后继续跑 |
 
 ## 常见问题
@@ -298,8 +316,7 @@ export OPENCLAW_PATH=/path/to/openclaw
 ```bash
 uv run scripts/friday_benchmark.py \
   --model direct/your-model \
-  --base-url http://localhost:20001/v1 \
-  --no-upload
+  --base-url http://localhost:20001/v1
 ```
 
 ### 只想跑自动评分

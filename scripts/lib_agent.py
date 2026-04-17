@@ -34,6 +34,11 @@ class ModelValidationError(Exception):
 
 MAX_OPENCLAW_MESSAGE_CHARS = int(os.environ.get("PINCHBENCH_MAX_MSG_CHARS", "8000"))
 JUDGE_MAX_MSG_CHARS = int(os.environ.get("PINCHBENCH_JUDGE_MAX_MSG_CHARS", "3000"))
+SESSION_QUIET_WINDOW_SECONDS = float(os.environ.get("PINCHBENCH_SESSION_QUIET_SECONDS", "10"))
+SESSION_QUIET_MAX_WAIT_SECONDS = float(
+    os.environ.get("PINCHBENCH_SESSION_QUIET_MAX_WAIT_SECONDS", "60")
+)
+SESSION_QUIET_POLL_SECONDS = float(os.environ.get("PINCHBENCH_SESSION_QUIET_POLL_SECONDS", "1"))
 
 
 def _coerce_subprocess_output(value: Any) -> str:
@@ -616,6 +621,88 @@ def _get_agent_store_dir(agent_id: str) -> Path:
     return direct_dir
 
 
+def _snapshot_agent_session_state(agent_id: str) -> tuple[tuple[tuple[str, int, int], ...], tuple[str, ...]]:
+    """Capture session-store state for timeout quiescence detection."""
+    sessions_dir = _get_agent_store_dir(agent_id) / "sessions"
+    if not sessions_dir.exists():
+        return (), ()
+
+    file_entries: list[tuple[str, int, int]] = []
+    for pattern in ("sessions.json", "*.jsonl", "*.jsonl.lock", "*.ndjson"):
+        for path in sessions_dir.rglob(pattern):
+            try:
+                stat_result = path.stat()
+                rel_path = str(path.relative_to(sessions_dir))
+            except (OSError, ValueError):
+                continue
+            file_entries.append((rel_path, stat_result.st_mtime_ns, stat_result.st_size))
+
+    fingerprint = tuple(sorted(set(file_entries)))
+    lock_files = tuple(sorted(entry[0] for entry in fingerprint if entry[0].endswith(".lock")))
+    return fingerprint, lock_files
+
+
+def wait_for_agent_sessions_to_quiesce(
+    agent_id: str,
+    *,
+    quiet_window_seconds: float = SESSION_QUIET_WINDOW_SECONDS,
+    max_wait_seconds: float = SESSION_QUIET_MAX_WAIT_SECONDS,
+    poll_seconds: float = SESSION_QUIET_POLL_SECONDS,
+) -> bool:
+    """Wait until an agent's session files stay unchanged and lock-free."""
+    quiet_window_seconds = max(0.0, quiet_window_seconds)
+    max_wait_seconds = max(quiet_window_seconds, max_wait_seconds)
+    poll_seconds = max(0.1, poll_seconds)
+
+    logger.info(
+        "Timeout cleanup: waiting for %s sessions to stay quiet for %.1fs (max %.1fs)",
+        agent_id,
+        quiet_window_seconds,
+        max_wait_seconds,
+    )
+
+    deadline = time.time() + max_wait_seconds
+    last_fingerprint: tuple[tuple[str, int, int], ...] | None = None
+    quiet_since: float | None = None
+    last_lock_files: tuple[str, ...] = ()
+
+    while True:
+        now = time.time()
+        fingerprint, lock_files = _snapshot_agent_session_state(agent_id)
+        changed = fingerprint != last_fingerprint
+        if changed:
+            last_fingerprint = fingerprint
+
+        if lock_files:
+            quiet_since = None
+        elif changed:
+            quiet_since = now
+        elif quiet_since is None:
+            quiet_since = now
+
+        if quiet_since is not None and now - quiet_since >= quiet_window_seconds:
+            logger.info(
+                "Timeout cleanup: %s sessions were quiet for %.1fs; proceeding",
+                agent_id,
+                now - quiet_since,
+            )
+            return True
+
+        if now >= deadline:
+            logger.warning(
+                "Timeout cleanup: %s sessions did not fully quiesce within %.1fs%s",
+                agent_id,
+                max_wait_seconds,
+                f"; remaining locks: {list(lock_files or last_lock_files)}"
+                if lock_files or last_lock_files
+                else "",
+            )
+            return False
+
+        last_lock_files = lock_files
+        time.sleep(poll_seconds)
+
+
 def _resolve_session_id_from_store(agent_id: str) -> str | None:
     agent_dir = _get_agent_store_dir(agent_id)
     sessions_store = agent_dir / "sessions" / "sessions.json"
@@ -1019,6 +1106,9 @@ def execute_openclaw_task(
             timeout=timeout_seconds,
         )
 
+    if timed_out:
+        wait_for_agent_sessions_to_quiesce(agent_id)
+
     transcript, transcript_path = _load_transcript(agent_id, session_id, start_time)
     usage = _extract_usage_from_transcript(transcript)
     execution_time = time.time() - start_time
@@ -1194,6 +1284,9 @@ def run_openclaw_prompt(
             break
         if "openclaw command not found" in s_err:
             break
+
+    if timed_out:
+        wait_for_agent_sessions_to_quiesce(agent_id)
 
     transcript, _ = _load_transcript(agent_id, session_id, start_time)
     execution_time = time.time() - start_time

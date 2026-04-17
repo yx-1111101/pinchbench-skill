@@ -86,6 +86,8 @@ def _iter_result_summary_paths() -> list[Path]:
             paths.append(path)
             seen.add(path)
     for path in iter_summary_paths():
+        if ".viewer_backups" in path.parts:
+            continue
         if path not in seen:
             paths.append(path)
             seen.add(path)
@@ -93,7 +95,7 @@ def _iter_result_summary_paths() -> list[Path]:
 
 
 def _display_path_for_result(path: Path) -> str:
-    """Short path for UI, e.g. formal/<model_slug> (no numeric run folder)."""
+    """Short path for UI, e.g. formal/<model_slug>/foundation."""
     try:
         rel = path.resolve().relative_to(RESULTS_DIR.resolve())
         parts = rel.parts
@@ -103,17 +105,46 @@ def _display_path_for_result(path: Path) -> str:
             and parts[-1] == "summary.json"
             and len(parts) >= 2
         ):
+            if len(parts) >= 4:
+                return f"{parts[0]}/{parts[1]}/{parts[2]}"
             return f"{parts[0]}/{parts[1]}"
     except ValueError:
         pass
     return path.name
 
 
+def _result_key_from_path(path: Path) -> str:
+    try:
+        rel = path.resolve().relative_to(RESULTS_DIR.resolve())
+        parts = rel.parts
+        if len(parts) >= 4 and parts[0] in ("formal", "temp") and parts[-1] == "summary.json":
+            return parts[2]
+        if len(parts) >= 3 and parts[0] in ("formal", "temp") and parts[-1] == "summary.json":
+            return "all"
+    except ValueError:
+        pass
+    return "all"
+
+
+def _run_identity(model_slug: str, result_key: str) -> str:
+    return f"{model_slug}__{result_key}"
+
+
 def _result_json_path_for_run(run_id: str) -> Path | None:
     rid = (run_id or "").strip()
     if not rid:
         return None
-    # New layout: results/<scope>/<run_id>/summary.json when run_id is model slug
+    if "__" in rid:
+        model_slug, result_key = rid.rsplit("__", 1)
+        for scope in ("formal", "temp"):
+            candidate = RESULTS_DIR / scope / model_slug / result_key / "summary.json"
+            if candidate.is_file():
+                return candidate
+            if result_key == "all":
+                legacy_candidate = RESULTS_DIR / scope / model_slug / "summary.json"
+                if legacy_candidate.is_file():
+                    return legacy_candidate
+    # Old layout: results/<scope>/<model_slug>/summary.json when run_id is model slug
     for scope in ("formal", "temp"):
         candidate = RESULTS_DIR / scope / rid / "summary.json"
         if candidate.is_file():
@@ -132,7 +163,7 @@ def _result_json_path_for_run(run_id: str) -> Path | None:
             continue
         if data.get("run_id") == rid or str(data.get("legacy_run_id", "")) == rid:
             return path
-    # Match by model slug (viewer now uses model as primary key)
+    # Match by model slug (legacy viewer behavior)
     by_model: list[tuple[float, Path]] = []
     for path in iter_summary_paths():
         if path.name != "summary.json":
@@ -175,8 +206,8 @@ def _transcript_dir_for_run(run_id: str) -> Path | None:
 # ---------------------------------------------------------------------------
 
 def get_runs():
-    """Return model-first run summaries (one latest entry per model)."""
-    runs_by_model: dict[str, dict] = {}
+    """Return latest run summaries keyed by model + result selection."""
+    runs_by_model: dict[tuple[str, str], dict] = {}
     for p in _iter_result_summary_paths():
         try:
             data = json.loads(p.read_text())
@@ -188,9 +219,12 @@ def get_runs():
         max_score = len(scored)
         model = data.get("model", "unknown")
         model_slug = slugify_model(model) if isinstance(model, str) and model else str(data.get("run_id", p.stem))
+        result_key = str(data.get("result_key") or _result_key_from_path(p) or "all")
+        run_identity = _run_identity(model_slug, result_key)
         item = {
-            "run_id": model_slug,
+            "run_id": run_identity,
             "model_slug": model_slug,
+            "result_key": result_key,
             "legacy_run_id": data.get("run_id", p.stem),
             "display_path": _display_path_for_result(p),
             "model": model,
@@ -201,9 +235,10 @@ def get_runs():
             "max_score": max_score,
             "file": str(p),
         }
-        prev = runs_by_model.get(model_slug)
+        group_key = (model_slug, result_key)
+        prev = runs_by_model.get(group_key)
         if prev is None or float(item.get("timestamp") or 0.0) >= float(prev.get("timestamp") or 0.0):
-            runs_by_model[model_slug] = item
+            runs_by_model[group_key] = item
     runs = list(runs_by_model.values())
     runs.sort(key=lambda r: r.get("timestamp") or 0, reverse=True)
     return runs
@@ -219,9 +254,11 @@ def get_run_detail(run_id: str):
     except Exception:
         return None
     model = data.get("model")
+    result_key = str(data.get("result_key") or _result_key_from_path(p) or "all")
     data["model_slug"] = slugify_model(model) if isinstance(model, str) and model else str(run_id)
+    data["result_key"] = result_key
     data["legacy_run_id"] = data.get("run_id")
-    data["run_id"] = data["model_slug"]
+    data["run_id"] = _run_identity(data["model_slug"], result_key)
     data["viewer_display_path"] = _display_path_for_result(p)
     return data
 
@@ -260,6 +297,7 @@ def get_leaderboard():
             {
                 "run_id": run_id,
                 "model_slug": detail.get("model_slug") or run_id,
+                "result_key": detail.get("result_key") or "all",
                 "model": detail.get("model") or "unknown",
                 "display_path": detail.get("viewer_display_path") or run.get("display_path") or "",
                 "timestamp": detail.get("timestamp") or run.get("timestamp"),
@@ -426,7 +464,6 @@ def _run_task_rerun_worker(job_id: str, run_id: str, task_id: str, model: str) -
             task_id,
             "--output-dir",
             str(tmp_dir),
-            "--no-upload",
             "--no-fail-fast",
             "--timeout-multiplier",
             "2",
@@ -1483,22 +1520,34 @@ let currentTaskId = null;
 let currentTranscriptData = null;
 let rerunJobs = {};
 let leaderboardSortBy = 'score';
+let leaderboardResultKeyFilter = '*';
+let taskCategoryFilter = '*';
 
 function setSubbarVisible(show) {
   const el = document.getElementById('oc-subbar');
   if (el) el.classList.toggle('is-hidden', !show);
 }
 
+function taskCategoryOf(task) {
+  return task?.frontmatter?.category || task?.category || 'uncategorized';
+}
+
+function filterLeaderboardRowsByKey(rows) {
+  if (leaderboardResultKeyFilter === '*') return [...(rows || [])];
+  return (rows || []).filter(r => String(r.result_key || 'all') === leaderboardResultKeyFilter);
+}
+
 function updatePillsForRun() {
   if (!currentRunData) return;
   const modelSlug = currentRunData.model_slug || currentRunId;
+  const resultKey = currentRunData.result_key || 'all';
   const tasks = currentRunData.tasks || [];
   const scored = tasks.filter(t => t.grading);
   const totalScore = scored.reduce((s, t) => s + (t.grading.mean || 0), 0);
   const idv = document.getElementById('pill-identity-v');
   const mv = document.getElementById('pill-model-v');
   const meta = document.getElementById('pill-meta-v');
-  if (idv) idv.textContent = `模型 ${modelSlug}`;
+  if (idv) idv.textContent = `模型 ${modelSlug} / ${resultKey}`;
   if (mv) mv.textContent = currentRunData.model || '—';
   if (meta) {
     meta.textContent = scored.length
@@ -1709,12 +1758,18 @@ function formatCurrency(v, digits = 4) {
 function renderLeaderboard(rows) {
   const panel = document.getElementById('task-panel');
   if (!panel) return;
-  const sorted = sortLeaderboardRows(rows);
+  const keyOptions = Array.from(new Set((rows || []).map(r => String(r.result_key || 'all')))).sort();
+  const filteredRows = filterLeaderboardRowsByKey(rows);
+  const sorted = sortLeaderboardRows(filteredRows);
   const newestTs = Math.max(...sorted.map(r => Number(r.timestamp || 0)), 0);
   const newestText = newestTs ? new Date(newestTs * 1000).toLocaleString('zh-CN') : '—';
   const sortLabel = leaderboardSortBy === 'speed' ? '速度优先（平均耗时更低）'
     : leaderboardSortBy === 'cost' ? '成本优先（总费用更低）'
     : '得分优先（综合得分更高）';
+  const keyButtons = ['*', ...keyOptions].map(key => {
+    const label = key === '*' ? '全部' : key;
+    return `<button type="button" class="leaderboard-btn ${leaderboardResultKeyFilter === key ? 'active' : ''}" onclick="setLeaderboardResultKeyFilter('${key}')">${label}</button>`;
+  }).join('');
 
   if (!sorted.length) {
     panel.innerHTML = `
@@ -1723,13 +1778,17 @@ function renderLeaderboard(rows) {
           <div class="section-title" style="margin-bottom:0">模型榜单</div>
           <div class="leaderboard-meta">暂无可用评测结果</div>
         </div>
+        <div class="leaderboard-sort" style="margin-bottom:12px">
+          <span class="leaderboard-meta">结果键：</span>
+          ${keyButtons}
+        </div>
         <div class="leaderboard-empty">先跑完至少一个模型的 benchmark，再回来查看榜单。</div>
       </div>
     `;
     return;
   }
 
-  const bestScore = sortLeaderboardRows(rows)[0];
+  const bestScore = sorted[0];
   const bestSpeed = [...sorted].sort(leaderboardComparator('speed'))[0];
   const bestCost = [...sorted].sort(leaderboardComparator('cost'))[0];
   const topCards = `
@@ -1783,6 +1842,10 @@ function renderLeaderboard(rows) {
           <button type="button" class="leaderboard-btn ${leaderboardSortBy === 'cost' ? 'active' : ''}" onclick="setLeaderboardSort('cost')">成本</button>
         </div>
       </div>
+      <div class="leaderboard-sort" style="margin-bottom:12px">
+        <span class="leaderboard-meta">结果键：</span>
+        ${keyButtons}
+      </div>
       ${topCards}
       <div class="leaderboard-meta" style="margin-bottom:8px">${sortLabel}</div>
       <div class="leaderboard-table-wrap">
@@ -1831,6 +1894,17 @@ async function setLeaderboardSort(sortBy) {
   leaderboardSortBy = sortBy;
   const rows = await apiFetch('/api/leaderboard');
   renderLeaderboard(rows);
+}
+
+async function setLeaderboardResultKeyFilter(resultKey) {
+  leaderboardResultKeyFilter = resultKey;
+  const rows = await apiFetch('/api/leaderboard');
+  renderLeaderboard(rows);
+}
+
+function setTaskCategoryFilter(categoryKey) {
+  taskCategoryFilter = categoryKey;
+  if (currentRunData) renderTaskGrid(currentRunData);
 }
 
 function renderDetailActions(task) {
@@ -1922,9 +1996,10 @@ function renderRunList(runs) {
     const pct = r.max_score ? Math.round(r.total_score / r.max_score * 100) : 0;
     const date = r.timestamp ? new Date(r.timestamp * 1000).toLocaleDateString('zh-CN') : '';
     const modelSlug = r.model_slug || r.run_id;
+    const resultKey = r.result_key ? ` / ${r.result_key}` : '';
     const displayPath = r.display_path ? ` · ${r.display_path}` : '';
     return `<div class="run-item" id="ri-${r.run_id}" onclick="selectRun('${r.run_id}')">
-      <div class="run-id">${modelSlug}</div>
+      <div class="run-id">${modelSlug}${resultKey}</div>
       <div class="run-model">${r.model}</div>
       <div class="run-score">${r.total_score}/${r.max_score} (${pct}%) · ${date}${displayPath}</div>
     </div>`;
@@ -1936,6 +2011,7 @@ function renderRunList(runs) {
 // ---------------------------------------------------------------------------
 async function selectRun(runId) {
   currentRunId = runId;
+  taskCategoryFilter = '*';
   document.querySelectorAll('.run-item').forEach(e => e.classList.remove('active'));
   const ri = document.getElementById(`ri-${runId}`);
   if (ri) ri.classList.add('active');
@@ -1957,7 +2033,9 @@ async function selectRun(runId) {
 }
 
 function renderTaskGrid(data) {
-  const tasks = data.tasks || [];
+  const allTasks = data.tasks || [];
+  const categoryOptions = Array.from(new Set(allTasks.map(taskCategoryOf))).sort();
+  const tasks = taskCategoryFilter === '*' ? allTasks : allTasks.filter(t => taskCategoryOf(t) === taskCategoryFilter);
 
   // Summary
   const scored = tasks.filter(t => t.grading);
@@ -1966,6 +2044,11 @@ function renderTaskGrid(data) {
   const timeoutCount = tasks.filter(t => t.timed_out).length;
   const totalCost = tasks.reduce((s, t) => s + (t.usage?.cost_usd || 0), 0);
   const totalTokens = tasks.reduce((s, t) => s + (t.usage?.total_tokens || 0), 0);
+
+  const categoryButtons = ['*', ...categoryOptions].map(key => {
+    const label = key === '*' ? '全部' : key;
+    return `<button type="button" class="leaderboard-btn ${taskCategoryFilter === key ? 'active' : ''}" onclick="setTaskCategoryFilter('${key}')">${label}</button>`;
+  }).join('');
 
   const summaryHtml = `<div class="run-summary-head">
     <div class="section-title">运行汇总</div>
@@ -1977,6 +2060,10 @@ function renderTaskGrid(data) {
     <div class="stat"><div class="stat-val">${totalScore.toFixed(2)}/${scored.length}</div><div class="stat-label">总分</div></div>
     <div class="stat"><div class="stat-val">$${totalCost.toFixed(4)}</div><div class="stat-label">总费用</div></div>
     <div class="stat"><div class="stat-val">${(totalTokens/1000).toFixed(1)}K</div><div class="stat-label">总Tokens</div></div>
+  </div>
+  <div class="leaderboard-sort" style="margin-top:10px">
+    <span class="leaderboard-meta">任务类别：</span>
+    ${categoryButtons}
   </div>`;
 
   const cardsHtml = tasks.map(t => {

@@ -80,11 +80,11 @@ To get your results on the leaderboard:
 # Register for an API token (one-time)
 ./scripts/run.sh --register
 
-# Run benchmark — results auto-upload with your token
+# Run benchmark locally
 ./scripts/run.sh --model openrouter/anthropic/claude-sonnet-4
 ```
 
-Skip uploading with `--no-upload` if you just want local results.
+Uploads are now opt-in. Pass `--auto-upload` when you want to submit results to the leaderboard.
 
 ### Official Results
 
@@ -112,7 +112,8 @@ export PINCHBENCH_OFFICIAL_KEY=your_official_key
 | `--output-dir DIR`       | Where to save results (default: `results/`)                                   |
 | `--execute-only`         | Run tasks and archive artifacts, skip grading                                 |
 | `--grade-only`           | Re-grade previously archived artifacts without re-running tasks               |
-| `--no-upload`            | Skip uploading to leaderboard                                                 |
+| `--auto-upload`          | Upload results to leaderboard after the run completes                         |
+| `--no-upload`            | Deprecated compatibility flag; uploads are skipped by default                 |
 | `--register`             | Request an API token for submissions                                          |
 | `--upload FILE`          | Upload a previous results JSON                                                |
 | `--official-key KEY`     | Mark submission as official (or use `PINCHBENCH_OFFICIAL_KEY` env var)        |
@@ -152,10 +153,10 @@ Run tasks and grade in separate steps — useful when you want to re-grade with 
 ./scripts/run.sh --model openrouter/anthropic/claude-sonnet-4 --execute-only
 
 # Step 2: grade archived artifacts (fast, no model re-run)
-./scripts/run.sh --model openrouter/anthropic/claude-sonnet-4 --grade-only --no-upload
+./scripts/run.sh --model openrouter/anthropic/claude-sonnet-4 --grade-only
 
 # Grade only specific tasks
-./scripts/run.sh --model openrouter/anthropic/claude-sonnet-4 --grade-only --suite task_03_blog --no-upload
+./scripts/run.sh --model openrouter/anthropic/claude-sonnet-4 --grade-only --suite task_03_blog
 ```
 
 ## Contributing Tasks

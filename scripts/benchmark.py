@@ -37,6 +37,7 @@ from lib_grading import GradeResult, grade_task
 from lib_paths import (
     RESULTS_ROOT,
     agent_model_workspace,
+    normalize_result_key,
     normalize_scope,
     results_model_dir,
     results_summary_path,
@@ -82,16 +83,16 @@ class OpenClawAgent:
 class BenchmarkRunner:
     """Orchestrates benchmark execution across tasks and agents."""
 
-    def __init__(self, tasks_dir: Path):
-        self.task_loader = TaskLoader(tasks_dir)
+    def __init__(self, tasks_dir: Path, task_loader: Optional[TaskLoader] = None):
+        self.task_loader = task_loader or TaskLoader(tasks_dir)
         self.tasks: List[Task] = []
         self.agents: List[OpenClawAgent] = []
         logger.info("Initialized BenchmarkRunner")
 
-    def load_tasks(self) -> None:
+    def load_tasks(self, category_filter: Optional[str] = None) -> None:
         """Load all tasks from the tasks directory."""
         logger.info("Loading tasks...")
-        self.tasks = self.task_loader.load_all_tasks()
+        self.tasks = self.task_loader.load_all_tasks(category_filter=category_filter)
         logger.info(f"Loaded {len(self.tasks)} tasks")
 
     def create_agent(self, agent_id: str, config: Optional[Dict[str, Any]] = None) -> OpenClawAgent:
@@ -212,6 +213,11 @@ def _parse_args() -> argparse.Namespace:
         help='Tasks to run: "all", "automated-only", or comma-separated IDs',
     )
     parser.add_argument(
+        "--category",
+        default=None,
+        help="Only run tasks in a specific category",
+    )
+    parser.add_argument(
         "--output-dir",
         default="results",
         help="Results directory",
@@ -222,9 +228,14 @@ def _parse_args() -> argparse.Namespace:
         help="Request a new API token and save it to local config",
     )
     parser.add_argument(
+        "--auto-upload",
+        action="store_true",
+        help="Upload results to server after the benchmark completes",
+    )
+    parser.add_argument(
         "--no-upload",
         action="store_true",
-        help="Skip uploading to server",
+        help="Deprecated: uploads are skipped by default",
     )
     parser.add_argument(
         "--upload",
@@ -320,6 +331,9 @@ def _parse_args() -> argparse.Namespace:
     )
     args = parser.parse_args()
 
+    if args.auto_upload and args.no_upload:
+        parser.error("--auto-upload and --no-upload cannot be used together")
+
     # Validate --trend-window
     if args.trend_window < 2:
         parser.error("--trend-window must be >= 2")
@@ -335,6 +349,16 @@ def _select_task_ids(tasks: List[Task], suite: str) -> Optional[List[str]]:
     if suite == "automated-only":
         return [task.task_id for task in tasks if task.grading_type == "automated"]
     return [task_id.strip() for task_id in suite.split(",") if task_id.strip()]
+
+
+def _result_key_from_args(args: argparse.Namespace) -> str:
+    if args.category:
+        return normalize_result_key(args.category)
+    if args.suite == "all":
+        return "all"
+    if args.suite == "automated-only":
+        return "automated-only"
+    return "suite-" + normalize_result_key(args.suite)
 
 
 def _next_run_id(legacy_results_dir: Path, structured_results_root: Path) -> str:
@@ -614,12 +638,13 @@ def _resolve_artifacts_dir(
     output_dir_arg: str,
     run_scope: str,
     model_slug: str,
+    result_key: str,
     explicit_artifacts_dir: Optional[str],
 ) -> Path:
     if explicit_artifacts_dir:
         return Path(explicit_artifacts_dir)
     if output_dir_arg == "results":
-        return results_model_dir(run_scope, model_slug) / "artifacts"
+        return results_model_dir(run_scope, model_slug, result_key) / "artifacts"
     return Path(output_dir_arg) / f"{model_slug}_artifacts"
 
 
@@ -680,7 +705,16 @@ def _archive_execution_artifact(
 def _load_execution_artifact(artifacts_dir: Path, task_id: str, run_index: int) -> Dict[str, Any]:
     run_dir = _artifact_run_dir(artifacts_dir, task_id, run_index)
     result_path = run_dir / "execution_result.json"
-    return json.loads(result_path.read_text(encoding="utf-8"))
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+
+    # Trust the artifact's current on-disk workspace location over any
+    # serialized path inside execution_result.json. This keeps grade-only
+    # runs correct after artifact directories are moved or re-keyed.
+    archived_workspace = run_dir / "workspace"
+    if archived_workspace.exists():
+        result["archived_workspace"] = str(archived_workspace)
+
+    return result
 
 
 def _build_task_entries(
@@ -798,20 +832,21 @@ def main():
     runner = BenchmarkRunner(tasks_dir)
 
     logger.info("📂 Loading tasks from directory...")
-    runner.load_tasks()
+    runner.load_tasks(category_filter=args.category)
 
     model_slug = slugify_model(args.model)
+    result_key = _result_key_from_args(args)
     run_scope = normalize_scope(os.environ.get("PINCHBENCH_RUN_SCOPE", "formal"))
     skill_dir = skill_root
     os.environ["PINCHBENCH_MODEL_SLUG"] = model_slug
     os.environ["PINCHBENCH_RUN_SCOPE"] = run_scope
 
     if args.output_dir == "results":
-        # Canonical layout: results/<scope>/<model_slug>/summary.json (no run number in path).
-        run_id = model_slug
-        output_dir = results_model_dir(run_scope, model_slug)
-        output_path = results_summary_path(run_scope, model_slug)
-        transcripts_dir = results_transcripts_dir(run_scope, model_slug)
+        # Canonical layout: results/<scope>/<model_slug>/<result_key>/summary.json.
+        run_id = f"{model_slug}__{result_key}"
+        output_dir = results_model_dir(run_scope, model_slug, result_key)
+        output_path = results_summary_path(run_scope, model_slug, result_key)
+        transcripts_dir = results_transcripts_dir(run_scope, model_slug, result_key)
     else:
         run_id = _next_run_id(skill_root / "results", RESULTS_ROOT)
         output_dir = Path(args.output_dir)
@@ -833,6 +868,7 @@ def main():
         args.output_dir,
         run_scope,
         model_slug,
+        result_key,
         args.artifacts_dir,
     )
 
@@ -844,8 +880,10 @@ def main():
         "model": args.model,
         "benchmark_version": _get_benchmark_version(skill_root),
         "run_id": run_id,
+        "result_key": result_key,
         "timestamp": time.time(),
         "suite": args.suite,
+        "category": args.category,
         "runs_per_task": runs_per_task,
         "artifacts_dir": str(artifacts_dir),
         "task_runs": [],
@@ -863,8 +901,10 @@ def main():
             "model": args.model,
             "benchmark_version": _get_benchmark_version(skill_root),
             "run_id": run_id,
+            "result_key": result_key,
             "timestamp": time.time(),
             "suite": args.suite,
+            "category": args.category,
             "runs_per_task": runs_per_task,
             "tasks": task_entries,
             "efficiency": efficiency,
@@ -1148,6 +1188,8 @@ def main():
                 task_entries=task_entries,
                 efficiency=efficiency,
                 extra_fields={
+                    "result_key": result_key,
+                    "category": args.category,
                     "grading_pending": True,
                     "executed_tasks": len(task_entries),
                     "total_tasks": len(tasks_to_run),
@@ -1171,6 +1213,10 @@ def main():
             runs_per_task=runs_per_task,
             task_entries=task_entries,
             efficiency=efficiency,
+            extra_fields={
+                "result_key": result_key,
+                "category": args.category,
+            },
         )
         return task_entries, efficiency
 
@@ -1202,8 +1248,8 @@ def main():
         except Exception as exc:
             logger.warning("Trend analysis failed: %s", exc)
 
-    if args.no_upload:
-        logger.info("Skipping upload (--no-upload)")
+    if not args.auto_upload:
+        logger.info("Skipping upload by default (pass --auto-upload to enable)")
     else:
         try:
             from lib_upload import UploadError, upload_results
