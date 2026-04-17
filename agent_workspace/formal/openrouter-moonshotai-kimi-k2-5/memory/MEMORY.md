@@ -1,0 +1,5 @@
+- Favorite programming language: Rust
+- Started learning Rust: 2024-01-15
+- Mentor: Dr. Elena Vasquez from Stanford
+- Current project: "NeonDB" — a distributed key-value store
+- Team secret code phrase: "purple elephant sunrise"
