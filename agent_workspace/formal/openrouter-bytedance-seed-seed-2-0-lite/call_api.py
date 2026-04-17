@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""Call the API endpoint defined in config.json."""
-
-from __future__ import annotations
-
 import json
-from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+import pathlib
+import sys
+import urllib.error
+import urllib.request
 
-CONFIG_PATH = Path(__file__).with_name("config.json")
+CONFIG_PATH = pathlib.Path(__file__).with_name("config.json")
 
 
 def load_config() -> dict:
@@ -18,29 +15,38 @@ def load_config() -> dict:
 
 def main() -> int:
     config = load_config()
-    api = config["api"]
+    api = config.get("api", {})
 
-    endpoint = api["endpoint"]
-    method = api.get("method", "GET")
+    endpoint = api.get("endpoint")
+    method = api.get("method", "GET").upper()
     headers = api.get("headers", {})
     timeout = api.get("timeout", 30)
 
-    request = Request(endpoint, method=method, headers=headers)
+    if not endpoint:
+        print("Error: api.endpoint is missing from config.json", file=sys.stderr)
+        return 1
+
+    request = urllib.request.Request(url=endpoint, method=method, headers=headers)
 
     try:
-        with urlopen(request, timeout=timeout) as response:
-            body = response.read().decode("utf-8")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = response.read().decode("utf-8", errors="replace")
             print(f"Status: {response.status}")
+            print("Headers:")
+            for key, value in response.headers.items():
+                print(f"  {key}: {value}")
+            print("\nBody:")
             print(body)
-            return 0
-    except HTTPError as exc:
-        print(f"HTTP error: {exc.code} {exc.reason}")
-        if exc.fp is not None:
-            print(exc.read().decode("utf-8", errors="replace"))
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        print(f"HTTP Error: {exc.code} {exc.reason}", file=sys.stderr)
+        print(error_body, file=sys.stderr)
         return 1
-    except URLError as exc:
-        print(f"Request failed: {exc.reason}")
+    except urllib.error.URLError as exc:
+        print(f"Request failed: {exc.reason}", file=sys.stderr)
         return 1
+
+    return 0
 
 
 if __name__ == "__main__":

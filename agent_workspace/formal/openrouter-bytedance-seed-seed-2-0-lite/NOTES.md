@@ -1,29 +1,32 @@
-# API Endpoint Extraction and Call Process
+# API Extraction and Call Notes
 
-## Endpoint found in `config.json`
-- URL: `https://api.example.com/v2/data`
+## API endpoint
+- Endpoint: `https://api.example.com/v2/data`
 - Method: `GET`
-- Headers:
-  - `Content-Type: application/json`
-  - `Accept: application/json`
 - Timeout: `30` seconds
 
-## What was created
-- `call_api.py`: a Python script that:
-  1. Reads `config.json`
-  2. Extracts the API endpoint settings
-  3. Sends the configured HTTP request
-  4. Prints the response status and body
-  5. Handles HTTP and connection errors cleanly
+## Where it came from
+Extracted from `config.json`:
+- `api.endpoint`
+- `api.method`
+- `api.headers`
+- `api.timeout`
 
-## How to run it
-From this directory, run:
+## Python script
+Created `call_api.py` to:
+1. Read `config.json`
+2. Extract the API settings
+3. Send the request using Python's built-in `urllib.request`
+4. Print the response status, headers, and body
+
+## How to run
+From this directory:
 
 ```bash
 python3 call_api.py
 ```
 
 ## Notes
-- The script uses Python's standard library only, so no extra packages are required.
-- It assumes `config.json` stays in the same directory as `call_api.py`.
-- The configured endpoint appears to be a placeholder example domain, so the request may fail unless the endpoint is replaced with a real API.
+- The script uses the headers defined in `config.json`.
+- No third-party packages are required.
+- The configured endpoint is `api.example.com`, which is commonly a placeholder domain. If the request fails in a real environment, the endpoint may need to be replaced with a live API URL.
