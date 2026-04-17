@@ -1,41 +1,33 @@
-# Polymarket Briefing — 2026-04-16
+# Polymarket Briefing — 2026-04-17
 
-Source for market ranking: Polymarket homepage Trending tab snapshot fetched on 2026-04-16 20:40 UTC.
+Source note: the markets below were taken from Polymarket's homepage **Trending** section at fetch time.
 
-## 1) US x Iran permanent peace deal by... 
-- **Polymarket status:** Top item on the Trending page.
-- **Visible contracts on page:**
-  - June 30, 2026: **Yes 70% / No 30%**
-  - May 31, 2026: **Yes 56% / No 44%**
-- **Why people are betting on it:** Traders are reacting to fast-moving diplomacy after the April 8 ceasefire, plus signs that negotiators are still talking even as expectations for a full deal have cooled.
-- **Related recent news (last 48h):** Reuters, **April 16**: *“Iran-US talks turn to interim deal amid rifts over nuclear work, Iranian sources say”*  
-  https://www.reuters.com/world/asia-pacific/iran-us-narrow-differences-after-pakistani-mediation-splits-remain-senior-2026-04-16/
-- **Why this story matters:** Reuters reported that Washington and Tehran had **scaled back from a comprehensive peace deal to a temporary memorandum** to avoid renewed conflict. That helps explain why the market still prices a meaningful chance of a deal by later deadlines, while staying much more cautious on the nearer May contract.
+## 1) US x Iran permanent peace deal by...?
+- **Polymarket snapshot:** 70% Yes by June 30, 56% Yes by May 31, about **$11M volume**.
+- **Why traders are betting on it:** Markets are reacting to signs that U.S.-Iran talks may continue after Pakistani mediation, but also to reporting that negotiators are lowering expectations from a full settlement to a narrower interim arrangement.
+- **Related recent news (last 48h):** Reuters, Apr. 16, 2026, reported that U.S. and Iranian negotiators were discussing a **temporary memorandum instead of a comprehensive peace deal**, while other Reuters reporting said Trump expected Iran to meet the U.S. over the weekend and that mediation had produced progress on "sticky issues."
+- **Takeaway:** Bettors seem to see a real path to more talks, but not a near-certain permanent agreement, which fits the gap between the May and June prices.
+- **News links:**
+  - https://www.reuters.com/world/asia-pacific/iran-us-narrow-differences-after-pakistani-mediation-splits-remain-senior-2026-04-16/
+  - https://www.reuters.com/world/asia-pacific/hopes-middle-east-peace-grow-israel-discusses-lebanon-ceasefire-2026-04-16/
 
 ## 2) What will WTI Crude Oil (WTI) hit in April 2026?
-- **Polymarket status:** Second major market block on the Trending page.
-- **Visible contracts on page:**
-  - Hit **$90 or lower** in April: **Yes 86% / No 14%**
-  - Hit **$85 or lower** in April: **Yes 66% / No 34%**
-- **Why people are betting on it:** Oil traders are trying to handicap whether shipping disruption around Iran and the Strait of Hormuz will keep crude elevated, or whether peace-talk optimism will pull prices lower before month-end.
-- **Related recent news (last 48h):** Reuters, **April 16**: *“Oil prices rise on doubts US-Iran peace talks will ease Hormuz disruption”*  
-  https://www.reuters.com/business/energy/oil-prices-fall-hopes-us-iran-deal-outweigh-supply-disruption-concerns-2026-04-16/
-- **Why this story matters:** Reuters said the market was balancing **ongoing shipping disruption and supply risk** against the possibility that a deal could reopen freer passage through the Strait of Hormuz. That is exactly the kind of headline flow that moves bettors in a threshold market like “will WTI hit $90/$85 this month?”
+- **Polymarket snapshot:** roughly 90% Yes for **$90**, 62% Yes for **$85**, about **$36M volume**.
+- **Why traders are betting on it:** Oil traders are repricing upward because the market still doubts diplomacy will quickly normalize flows through the Strait of Hormuz.
+- **Related recent news (last 48h):** Reuters, Apr. 16, 2026, said **WTI settled at $94.69/barrel**, up 3.7% on the day, as skepticism grew that U.S.-Iran peace talks would quickly ease Hormuz disruption.
+- **Takeaway:** With WTI already above $90 in Reuters' latest report, Polymarket pricing above the $90 threshold makes sense.
+- **News links:**
+  - https://www.reuters.com/business/energy/oil-prices-fall-hopes-us-iran-deal-outweigh-supply-disruption-concerns-2026-04-16/
+  - https://www.reuters.com/markets/commodities/iran-war-has-shattered-oils-price-compass-2026-04-16/
 
-## 3) What will Trump say during No Tax on Tips Roundtable?
-- **Polymarket status:** Third major market block on the Trending page.
-- **Visible contracts on page:**
-  - Say **“tax” 10+ times**: **Yes 94% / No 6%**
-  - Say **“refund”**: **Yes 86% / No 14%**
-- **Why people are betting on it:** This is an event-driven speech market. Traders are positioning around a scheduled Trump roundtable in Las Vegas focused on service-worker tax cuts, so they are betting on likely talking points and repeated slogans.
-- **Related recent news (last 48h):** Reuters, **April 16**: *“Trump tries economic reset as Republicans fret over high gas prices”*  
-  https://www.reuters.com/legal/government/trump-tries-economic-reset-republicans-fret-over-high-gas-prices-2026-04-16/
-- **Why this story matters:** Reuters reported that Trump would **host a Thursday roundtable centered on eliminating federal taxes on tips**. Once an event and topic are clearly set, Polymarket traders can make very specific wording bets, which explains the heavy confidence in terms like “tax” and “refund.”
+## 3) Strait of Hormuz traffic returns to normal by end of April?
+- **Polymarket snapshot:** about **28% chance**, around **$11M volume**.
+- **Why traders are betting on it:** Shipping access is still impaired, but markets are trying to handicap whether any U.S.-Iran deal could quickly reopen normal transit conditions.
+- **Related recent news (last 48h):** Reuters, Apr. 15-16, 2026, reported that **traffic through the Strait remained well below normal levels**, even as Iran floated a proposal that could allow ships to move safely through the Omani side if a deal is reached.
+- **Takeaway:** The low probability reflects the fact that traffic is not normal yet, even though diplomacy has created a plausible reopening path.
+- **News links:**
+  - https://www.reuters.com/world/middle-east/iran-offers-proposal-allowing-ships-exit-oman-side-hormuz-free-attack-source-2026-04-15/
+  - https://www.reuters.com/world/asia-pacific/us-shuts-down-irans-maritime-trade-despite-optimism-more-talks-2026-04-15/
 
-## Quick takeaway
-The top of Polymarket right now is being driven by three very different kinds of catalysts:
-1. **Geopolitical negotiations** (US-Iran peace deal)
-2. **Macro and commodity volatility** (WTI price thresholds)
-3. **A scheduled political media event** (Trump roundtable wording bets)
-
-In all three cases, the betting is closely tied to fresh headline flow from the last two days rather than slow-moving background fundamentals.
+## Bottom line
+All three top trending markets are being driven by the same macro story: traders are trying to price whether the current U.S.-Iran de-escalation effort turns into a real shipping and energy normalization, or stalls at a fragile interim truce.
