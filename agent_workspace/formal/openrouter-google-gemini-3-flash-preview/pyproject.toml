@@ -5,6 +5,6 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "datautils"
 version = "0.1.0"
-description = "Basic utilities for working with data."
+description = "A basic Python utility library project."
 readme = "README.md"
 requires-python = ">=3.8"
