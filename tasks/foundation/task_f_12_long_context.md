@@ -4,7 +4,8 @@ name: "task_f_12_long_context"
 category: foundation
 grading_type: automated
 timeout_seconds: 120
-workspace_files: []
+workspace_files:
+  - long_doc.txt
 dataset_dir: dataset/foundation/task_f_12_long_context
 ---
 
@@ -14,7 +15,7 @@ dataset_dir: dataset/foundation/task_f_12_long_context
 
 ## Expected Behavior
 
-The agent should complete the task as described in the prompt.
+The agent should locate the hidden keyword line in `long_doc.txt` and copy the phrase after the colon into `answer.txt`. The grader parses the golden phrase from the same `long_doc.txt` in the workspace and checks for an exact substring match—objective correctness.
 
 Evaluation criteria:
 - `file_created`：`answer.txt` 是否存在  

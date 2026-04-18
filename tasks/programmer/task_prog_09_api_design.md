@@ -4,7 +4,8 @@ name: "API 接口设计（OpenAPI 规范生成）"
 category: programmer
 grading_type: hybrid
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - prd.md
 dataset_dir: dataset/programmer/task_prog_09_api_design
 grading_weights:
   automated: 0.5
@@ -32,7 +33,7 @@ Evaluation criteria:
 - `has_openapi_version`：包含 `openapi: "3.`
 - `has_five_paths`：paths 下包含 ≥ 5 个路由
 - `has_auth`：包含 Bearer / securitySchemes / Authorization
-- `has_error_codes`：包含 400 和 404 响应定义
+- `has_error_codes`：包含 400 / 401 / 404 / 500 响应定义
 
 **LLM Judge**：路由设计是否符合 REST 规范 · Schema 是否合理完整 · 与 PRD 需求的覆盖度
 
@@ -43,7 +44,7 @@ Evaluation criteria:
 - [ ] has_openapi_version: 包含 `openapi: "3.`
 - [ ] has_five_paths: paths 下包含 ≥ 5 个路由
 - [ ] has_auth: 包含 Bearer / securitySchemes / Authorization
-- [ ] has_error_codes: 包含 400 和 404 响应定义
+- [ ] has_error_codes: 包含 400 / 401 / 404 / 500 响应定义
 
 ## Automated Checks
 
@@ -64,7 +65,7 @@ def grade(transcript, workspace_path):
     has_ver   = bool(re.search(r"openapi:\s*['\"]?3\.", text))
     paths_cnt = len(re.findall(r'^\s{2}/', text, re.MULTILINE))
     has_auth  = any(w in text for w in ["Bearer","bearerAuth","securitySchemes","Authorization"])
-    has_err   = "400" in text and "404" in text
+    has_err   = all(code in text for code in ["400", "401", "404", "500"])
     return {
         "file_created":       1.0,
         "valid_yaml":         1.0 if valid_yaml else 0.0,
@@ -81,7 +82,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions: 路由设计是否符合 REST 规范 · Schema 是否合理完整 · 与 PRD 需求的覆盖度路由设计是否符合 REST 规范 · Schema 是否合理完整 · 与 PRD 需求的覆盖度
+Dimensions: 路由设计是否符合 REST 规范 · Schema 是否合理完整 · 与 PRD 需求的覆盖度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

@@ -13,6 +13,7 @@
 |----------|----------|
 | tasks/foundation/task_f_01_web_search.md | dataset/foundation/task_f_01_web_search/（可选，f_01 无输入文件） |
 | tasks/foundation/task_f_02_image_understand.md | dataset/foundation/task_f_02_image_understand/ |
+| tasks/foundation/task_f_09_dialog_logging.md | dataset/foundation/task_f_09_dialog_logging/ |
 | tasks/secretary/task_sec_01_info_extract.md | dataset/secretary/task_sec_01_info_extract/ |
 
 ## 当前分组

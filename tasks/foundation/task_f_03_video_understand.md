@@ -4,29 +4,32 @@ name: "task_f_03_video_understand"
 category: foundation
 grading_type: automated
 timeout_seconds: 120
-workspace_files: []
+workspace_files:
+  - demo.mp4
 dataset_dir: dataset/foundation/task_f_03_video_understand
 ---
 
 ## Prompt
 
-工作区有一段的视频 `demo.mp4`
+工作区有一段视频 `demo.mp4`
 
 请生成视频摘要，保存到 `video_summary.txt`，要求：
 - 说明视频主要内容
 
 ## Expected Behavior
 
-The agent should complete the task as described in the prompt.
+The agent should process `demo.mp4` (via vision capabilities or tools), accurately summarize what is visible, and write the summary to `video_summary.txt`.
+
+The video contains specific verifiable elements (defined in `GROUND_TRUTH_KEYWORDS` below). A correct summary must mention enough of these elements to show the model actually perceived the video, rather than fabricating plausible-sounding content.
 
 Evaluation criteria:
 - `file_created`: video_summary.txt 是否存在
-- `has_content`: 是否产出了实质性视频摘要（非空、且非「无法识别/无法处理视频」等拒绝类回复；不区分能力来自模型本身还是工具）
+- `keyword_hit_rate`: 摘要中命中 ground-truth 关键词组的比例（每组任一同义词命中即计 1 组）
 
 ## Grading Criteria
 
 - [ ] file_created: video_summary.txt 是否存在
-- [ ] has_content: 是否产出了实质性视频摘要（非空、且非「无法识别/无法处理视频」等拒绝类回复；不区分能力来自模型本身还是工具）
+- [ ] keyword_hit_rate: 关键词组命中率（与 `demo.mp4` 画面对应，见 Automated Checks）
 
 ## Automated Checks
 
@@ -36,26 +39,31 @@ def grade(transcript, workspace_path):
     workspace_path = Path(workspace_path)
     f = workspace_path / "video_summary.txt"
     if not f.exists():
-        return {"file_created": 0.0, "has_content": 0.0}
+        return {"file_created": 0.0, "keyword_hit_rate": 0.0}
 
     content = f.read_text(encoding="utf-8", errors="ignore").strip()
     c_lower = content.lower()
 
-    refusal_phrases = [
-        "无法识别", "无法辨认", "无法处理", "无法分析", "无法读取", "无法打开", "无法访问",
-        "看不到", "不能识别", "不支持视频", "没有视频", "未提供视频", "找不到视频",
-        "cannot recognize", "cannot process", "cannot analyze", "cannot view",
-        "cannot read", "cannot open", "cannot access",
-        "i cannot see", "i'm unable to", "i don't have",
-        "no video", "can't process the video", "can't see the video",
+    # Ground-truth keywords derived from the actual video content (demo.mp4).
+    # Scene: orange tabby cat on a white windowsill, looking toward the camera;
+    # window and soft outdoor greenery/sky visible in the background.
+    # Each tuple is one keyword group; ANY synonym match counts as one hit for that group.
+    GROUND_TRUTH_KEYWORDS = [
+        ("cat", "kitten", "猫", "小猫", "猫咪"),
+        ("orange", "ginger", "tabby", "橘", "橙", "黄", "姜黄", "虎斑"),
+        ("window", "windowsill", "窗", "窗台", "窗户"),
+        ("looking", "gazing", "staring", "看", "望", "注视", "凝视", "镜头", "camera"),
+        ("outdoor", "outside", "树", "tree", "sky", "天空", "绿", "green", "blur", "模糊"),
     ]
-    is_refusal = any((p in content) or (p in c_lower) for p in refusal_phrases)
 
-    # 拒绝/无法访问类回复不算「有摘要」；过短内容（例如一句话借口）也不算
-    has_content = len(content) > 10 and not is_refusal
+    hits = sum(
+        1 for synonyms in GROUND_TRUTH_KEYWORDS
+        if any(s in c_lower for s in synonyms)
+    )
+    hit_rate = hits / len(GROUND_TRUTH_KEYWORDS)
 
     return {
         "file_created": 1.0,
-        "has_content": 1.0 if has_content else 0.0,
+        "keyword_hit_rate": round(hit_rate, 2),
     }
 ```

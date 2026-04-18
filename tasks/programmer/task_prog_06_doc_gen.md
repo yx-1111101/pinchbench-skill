@@ -4,7 +4,8 @@ name: "技术文档生成（docstring + README）"
 category: programmer
 grading_type: hybrid
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - processor.py
 dataset_dir: dataset/programmer/task_prog_06_doc_gen
 grading_weights:
   automated: 0.3
@@ -27,7 +28,7 @@ The agent should complete the task as described in the prompt.
 
 Evaluation criteria:
 **自动**：
-- `processor_modified`：processor.py 存在且比原始文件更长
+- `processor_modified`：processor.py 存在且包含明显新增文档内容（文件长度 > 800）
 - `readme_created`：README.md 存在
 - `has_docstrings`：processor.py 包含 docstring（含 `"""`）
 - `has_args_section`：docstring 包含 `Args:` 字段
@@ -37,7 +38,7 @@ Evaluation criteria:
 
 ## Grading Criteria
 
-- [ ] processor_modified: processor.py 存在且比原始文件更长
+- [ ] processor_modified: processor.py 存在且包含明显新增文档内容（文件长度 > 800）
 - [ ] readme_created: README.md 存在
 - [ ] has_docstrings: processor.py 包含 docstring（含 `"""`）
 - [ ] has_args_section: docstring 包含 `Args:` 字段
@@ -70,7 +71,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions: docstring 准确性 · 示例是否可运行 · README 结构完整度docstring 准确性 · 示例是否可运行 · README 结构完整度
+Dimensions: docstring 准确性 · 示例是否可运行 · README 结构完整度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

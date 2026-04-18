@@ -4,7 +4,9 @@ name: "投资组合追踪 → 持仓分析 + 盈亏计算"
 category: finance
 grading_type: automated
 timeout_seconds: 120
-workspace_files: []
+workspace_files:
+  - portfolio.csv
+  - prices_today.json
 dataset_dir: dataset/finance/task_fin_06_portfolio_track
 ---
 
@@ -22,10 +24,10 @@ dataset_dir: dataset/finance/task_fin_06_portfolio_track
 The agent should complete the task as described in the prompt.
 
 Evaluation criteria:
-（Golden Answers：总盈亏 +26,650 元 · 英伟达盈利最多 +8,850 元 · 腾讯亏损最多 -7,000 元）
+（Golden Answers：总盈亏 +12,300 元 · 英伟达盈利最多 +8,850 元 · 腾讯亏损最多 -7,000 元）
 
 - `file_created`：portfolio_report.md 存在
-- `total_profit_correct`：总盈亏在正确范围（+26650±1000，港股汇率有浮动）
+- `total_profit_correct`：总盈亏在正确范围（+12300±500）
 - `nvda_profit_correct`：英伟达盈亏正确（+8850±500）
 - `tencent_loss_correct`：腾讯亏损识别正确（报告中腾讯对应负数）
 - `has_percentage`：包含盈亏百分比
@@ -33,9 +35,9 @@ Evaluation criteria:
 
 ## Grading Criteria
 
-- [ ] （Golden Answers：总盈亏 +26,650 元 · 英伟达盈利最多 +8,850 元 · 腾讯亏损最多 -7,000 元）
+- [ ] （Golden Answers：总盈亏 +12,300 元 · 英伟达盈利最多 +8,850 元 · 腾讯亏损最多 -7,000 元）
 - [ ] file_created: portfolio_report.md 存在
-- [ ] total_profit_correct: 总盈亏在正确范围（+26650±1000，港股汇率有浮动）
+- [ ] total_profit_correct: 总盈亏在正确范围（+12300±500）
 - [ ] nvda_profit_correct: 英伟达盈亏正确（+8850±500）
 - [ ] tencent_loss_correct: 腾讯亏损识别正确（报告中腾讯对应负数）
 - [ ] has_percentage: 包含盈亏百分比
@@ -53,9 +55,9 @@ def grade(transcript, workspace_path):
         return {k: 0.0 for k in ["file_created","total_profit_correct","nvda_profit_correct",
                                    "tencent_loss_correct","has_percentage","has_all_positions"]}
     content = f.read_text(encoding="utf-8")
-    # 总盈亏 26650±1000
+    # 总盈亏 12300±500
     all_nums = [int(n.replace(",","")) for n in re.findall(r'[\d,]{4,}', content)]
-    total_ok = any(25650 <= n <= 27650 for n in all_nums)
+    total_ok = any(11800 <= n <= 12800 for n in all_nums)
     # 英伟达盈亏 8850±500
     nvda_ok = any(8350 <= n <= 9350 for n in all_nums)
     # 腾讯亏损（找腾讯段落含负号）

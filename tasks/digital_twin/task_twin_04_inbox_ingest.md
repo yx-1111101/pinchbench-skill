@@ -4,7 +4,8 @@ name: "持续学习 — 多形态碎片输入 → 无感结构化存库"
 category: digital_twin
 grading_type: hybrid
 timeout_seconds: 180
-workspace_files: []
+workspace_files:
+  - inbox.txt
 dataset_dir: dataset/digital_twin/task_twin_04_inbox_ingest
 grading_weights:
   automated: 0.5

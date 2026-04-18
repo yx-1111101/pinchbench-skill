@@ -4,7 +4,8 @@ name: "社群消息意图识别 + 分类回复"
 category: operator
 grading_type: hybrid
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - messages.txt
 dataset_dir: dataset/operator/task_ops_09_community_reply
 grading_weights:
   automated: 0.5

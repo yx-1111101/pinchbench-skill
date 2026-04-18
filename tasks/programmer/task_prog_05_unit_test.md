@@ -4,7 +4,8 @@ name: "单元测试生成（pytest）"
 category: programmer
 grading_type: automated
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - utils.py
 dataset_dir: dataset/programmer/task_prog_05_unit_test
 ---
 
@@ -12,8 +13,8 @@ dataset_dir: dataset/programmer/task_prog_05_unit_test
 
 工作区有一个工具函数模块 `utils.py`，包含数个边界条件复杂的函数。
 
-请为其生成完整的 pytest 测试文件 `test_utils.py`，要求：
-- 覆盖每个函数的正常路径、边界值、异常输入
+请为其生成较完整的 pytest 测试文件 `test_utils.py`，要求：
+- 尽量覆盖每个函数的正常路径、边界值、异常输入
 - 使用 `pytest.raises` 测试预期异常
 - 测试用例有清晰的命名（`test_功能_场景`）
 
@@ -27,6 +28,8 @@ Evaluation criteria:
 - `all_tests_pass`：`pytest test_utils.py` 全部通过（返回码 0）
 - `covers_edge_cases`：包含边界/异常测试（`pytest.raises` 或 `None`/`[]`/`0` 等边界值出现）
 - `test_count_sufficient`：测试函数数量 ≥ 8
+
+说明：自动评分只验证基础测试完备度代理指标；“是否覆盖全部函数”与“测试质量深度”由人工或 LLM 评审综合判断。
 
 ## Grading Criteria
 

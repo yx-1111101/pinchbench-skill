@@ -4,7 +4,9 @@ name: "办公软件应用（多格式文件处理流水线）"
 category: secretary
 grading_type: hybrid
 timeout_seconds: 300
-workspace_files: []
+workspace_files:
+  - project_summary.docx
+  - budget_data.xlsx
 dataset_dir: dataset/secretary/task_sec_08_office_pipeline
 grading_weights:
   automated: 0.4

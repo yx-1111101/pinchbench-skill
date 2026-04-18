@@ -4,7 +4,11 @@ name: "多文件协作修改（接口变更跨文件传播）"
 category: programmer
 grading_type: automated
 timeout_seconds: 180
-workspace_files: []
+workspace_files:
+  - models.py
+  - service.py
+  - api.py
+  - test_integration.py
 dataset_dir: dataset/programmer/task_prog_11_multi_file
 ---
 

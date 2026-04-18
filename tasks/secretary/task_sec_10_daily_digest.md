@@ -25,14 +25,14 @@ The agent should complete the task as described in the prompt.
 Evaluation criteria:
 - `file_created`：digest_setup.txt 是否存在
 - `file_not_empty`：内容非空
-- `cron_configured`：包含定时相关词（「09:00」「每天」「cron」「定时」）
+- `cron_configured`：轨迹中出现创建/查看/写入 cron、crontab、launchd 等定时任务配置行为
 - `test_sent`：包含发送确认词（「已发送」「sent」「success」「成功」）
 
 ## Grading Criteria
 
 - [ ] file_created: digest_setup.txt 是否存在
 - [ ] file_not_empty: 内容非空
-- [ ] cron_configured: 包含定时相关词（「09:00」「每天」「cron」「定时」）
+- [ ] cron_configured: 轨迹中出现创建/查看/写入 cron、crontab、launchd 等定时任务配置行为
 - [ ] test_sent: 包含发送确认词（「已发送」「sent」「success」「成功」）
 
 ## Automated Checks
@@ -41,11 +41,23 @@ Evaluation criteria:
 def grade(transcript, workspace_path):
     from pathlib import Path
     workspace_path = Path(workspace_path)
+    import re
     f = workspace_path / "digest_setup.txt"
     if not f.exists():
         return {k: 0.0 for k in ["file_created","file_not_empty","cron_configured","test_sent"]}
     content = f.read_text(encoding="utf-8").strip()
-    cron_ok = any(w in content for w in ["09:00","9:00","每天","cron","定时","daily"])
+    transcript_text = str(transcript or "")
+    cron_patterns = [
+        r'crontab',
+        r'\bcron\b',
+        r'launchctl',
+        r'launchd',
+        r'/etc/crontab',
+        r'cron\.d',
+        r'plist',
+        r'0\s+9\s+\*\s+\*\s+\*',
+    ]
+    cron_ok = any(re.search(p, transcript_text, re.I) for p in cron_patterns)
     sent_ok = any(w in content.lower() for w in ["已发送","sent","success","成功","发送成功"])
     return {
         "file_created":   1.0,

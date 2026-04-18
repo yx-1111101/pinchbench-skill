@@ -4,7 +4,8 @@ name: "内容关键信息提取"
 category: secretary
 grading_type: automated
 timeout_seconds: 90
-workspace_files: []
+workspace_files:
+  - raw_notes.txt
 dataset_dir: dataset/secretary/task_sec_01_info_extract
 ---
 

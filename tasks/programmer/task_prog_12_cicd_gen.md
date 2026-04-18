@@ -4,7 +4,8 @@ name: "CI/CD 配置生成（GitHub Actions workflow）"
 category: programmer
 grading_type: automated
 timeout_seconds: 120
-workspace_files: []
+workspace_files:
+  - project_info.md
 dataset_dir: dataset/programmer/task_prog_12_cicd_gen
 ---
 

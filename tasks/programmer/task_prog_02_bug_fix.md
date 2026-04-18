@@ -4,7 +4,9 @@ name: "报错日志定位 → 运行时 Bug 修复"
 category: programmer
 grading_type: hybrid
 timeout_seconds: 180
-workspace_files: []
+workspace_files:
+  - clean_sales.py
+  - error.log
 dataset_dir: dataset/programmer/task_prog_02_bug_fix
 grading_weights:
   automated: 0.7

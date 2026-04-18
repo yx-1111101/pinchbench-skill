@@ -14,20 +14,22 @@ dataset_dir: dataset/foundation/task_f_01_web_search
 
 ## Expected Behavior
 
-The agent should complete the task as described in the prompt.
+The agent should search for NVDA’s stock price and write results to `result.txt`. Automated grading checks that the file is non-empty, mentions NVIDIA / NVDA, contains a plausible price-like number, and (when a live reference close can be fetched) that a candidate price matches within tolerance—same spirit as other foundation tasks that tie scores to verifiable content.
 
 Evaluation criteria:
 - `file_created`：`result.txt` 是否存在  
 - `file_not_empty`：文件原始内容是否非空（按写入字节判定，不因剔除噪声而判空）  
+- `mentions_nvda`：是否出现 NVDA / 英伟达 等与标的股票一致的指称  
 - `has_price_number`：剔除日期/时间噪声后，是否含股价形态的数值  
-- `price_matches_live_close`：仅当参考收盘价拉取成功时：是否存在落在容差内的候选价
+- `price_matches_live_close`：当参考收盘价拉取成功时，是否存在落在容差内的候选价；拉取失败时为 `0.0`（该项不可用）
 
 ## Grading Criteria
 
 - [ ] file_created: `result.txt` 是否存在
 - [ ] file_not_empty: 文件原始内容是否非空（按写入字节判定，不因剔除噪声而判空）
+- [ ] mentions_nvda: 是否提及 NVDA / 英伟达
 - [ ] has_price_number: 剔除日期/时间噪声后，是否含股价形态的数值
-- [ ] price_matches_live_close: 仅当参考收盘价拉取成功时：是否存在落在容差内的候选价
+- [ ] price_matches_live_close: 参考价可用时价格是否在容差内，否则记 0
 
 ## Automated Checks
 
@@ -94,6 +96,7 @@ def grade(transcript, workspace_path):
     f = workspace_path / "result.txt"
     exists = f.exists()
     raw = f.read_text(encoding="utf-8", errors="ignore").strip() if exists else ""
+    raw_lower = raw.lower()
     content = strip_date_time_noise(raw)
 
     price_like = re.compile(
@@ -101,10 +104,14 @@ def grade(transcript, workspace_path):
     )
     has_price_number = bool(price_like.search(content))
 
+    mentions_nvda = ("nvda" in raw_lower) or ("英伟达" in raw) or ("nvidia" in raw_lower)
+
     scores = {
         "file_created": 1.0 if exists else 0.0,
         "file_not_empty": 1.0 if len(raw) > 0 else 0.0,
+        "mentions_nvda": 1.0 if mentions_nvda else 0.0,
         "has_price_number": 1.0 if has_price_number else 0.0,
+        "price_matches_live_close": 0.0,
     }
 
     ref = fetch_nvda_close()

@@ -2,10 +2,14 @@
 id: task_ops_04_layout_brief
 name: "图文排版指令生成（给设计师的排版说明书）"
 category: operator
-grading_type: llm_judge
+grading_type: hybrid
 timeout_seconds: 120
-workspace_files: []
+workspace_files:
+  - article_content.txt
 dataset_dir: dataset/operator/task_ops_04_layout_brief
+grading_weights:
+  automated: 0.5
+  llm_judge: 0.5
 ---
 
 ## Prompt
@@ -54,7 +58,7 @@ def grade(transcript, workspace_path):
         return {k: 0.0 for k in ["file_created","file_not_empty","has_nine_slides","has_cover_spec","has_color_scheme"]}
     content = f.read_text(encoding="utf-8")
     slide_refs = re.findall(r'(?:第[一二三四五六七八九1-9]张|图[1-9]|Slide\s*[1-9]|第\s*[1-9]\s*[张页])', content)
-    has_nine   = len(set(slide_refs)) >= 6
+    has_nine   = len(set(slide_refs)) >= 9
     has_cover  = any(w in content for w in ["封面","第一张","第1张","首图","cover"])
     has_color  = any(w in content for w in ["配色","颜色","色调","#","RGB","主色","辅助色"])
     return {
@@ -72,7 +76,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions: 排版指令是否清晰可执行 · 内容与文章是否对应 · 视觉风格是否统一且符合平台调性排版指令是否清晰可执行 · 内容与文章是否对应 · 视觉风格是否统一且符合平台调性
+Dimensions: 排版指令是否清晰可执行 · 内容与文章是否对应 · 视觉风格是否统一且符合平台调性
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

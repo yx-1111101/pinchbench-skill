@@ -4,7 +4,10 @@ name: "冷启动 — 历史文章样本 → 提炼写作风格规则"
 category: digital_twin
 grading_type: llm_judge
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - article_01.txt
+  - article_02.txt
+  - article_03.txt
 dataset_dir: dataset/digital_twin/task_twin_02_style_extract
 ---
 

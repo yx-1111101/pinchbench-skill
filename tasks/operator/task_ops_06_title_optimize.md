@@ -4,7 +4,8 @@ name: "标题党优化（同一内容生成10个差异化标题备选）"
 category: operator
 grading_type: hybrid
 timeout_seconds: 90
-workspace_files: []
+workspace_files:
+  - original.txt
 dataset_dir: dataset/operator/task_ops_06_title_optimize
 grading_weights:
   automated: 0.6
@@ -32,8 +33,8 @@ Evaluation criteria:
 - `file_created`：titles.md 存在
 - `has_ten_titles`：包含 10 个编号标题
 - `has_style_labels`：包含括号内的风格标注
-- `has_variety`：包含至少 5 种不同风格关键词（数字/疑问/对比/痛点/利益/悬念/情感）
-- `length_ok`：至少 8 个标题字数在 10-35 字之间
+- `has_variety`：标题风格标注中包含至少 5 种不同风格
+- `length_ok`：10 个标题字数都在 15-30 字之间
 
 **LLM Judge**：标题是否有吸引力 · 风格是否真正差异化（不是换个说法的重复）
 
@@ -42,8 +43,8 @@ Evaluation criteria:
 - [ ] file_created: titles.md 存在
 - [ ] has_ten_titles: 包含 10 个编号标题
 - [ ] has_style_labels: 包含括号内的风格标注
-- [ ] has_variety: 包含至少 5 种不同风格关键词（数字/疑问/对比/痛点/利益/悬念/情感）
-- [ ] length_ok: 至少 8 个标题字数在 10-35 字之间
+- [ ] has_variety: 标题风格标注中包含至少 5 种不同风格
+- [ ] length_ok: 10 个标题字数都在 15-30 字之间
 
 ## Automated Checks
 
@@ -59,15 +60,20 @@ def grade(transcript, workspace_path):
     numbered = re.findall(r'^\s*(?:\d{1,2}[\.、\)]|[①-⑩])\s*.+', content, re.MULTILINE)
     has_labels = bool(re.search(r'[（(][^）)]{2,8}[）)]', content))
     styles = ["数字","疑问","对比","痛点","利益","悬念","情感","干货","故事","反常"]
-    found_styles = sum(1 for s in styles if s in content)
-    # 检查字数
-    long_enough = sum(1 for t in numbered if 10 <= len(re.sub(r'[（(][^）)]*[）)]','',t).strip()) <= 40)
+    labels = re.findall(r'[（(]([^）)]{2,8})[）)]', content)
+    found_styles = len({label for label in labels if label in styles})
+    title_lengths = []
+    for t in numbered:
+        cleaned = re.sub(r'^\s*(?:\d{1,2}[\.、\)]|[①-⑩])\s*', '', t)
+        cleaned = re.sub(r'[（(][^）)]*[）)]', '', cleaned).strip()
+        title_lengths.append(len(cleaned))
+    long_enough = sum(1 for n in title_lengths if 15 <= n <= 30)
     return {
         "file_created":    1.0,
         "has_ten_titles":  1.0 if len(numbered) >= 10 else 0.0,
         "has_style_labels":1.0 if has_labels else 0.0,
         "has_variety":     1.0 if found_styles >= 5 else 0.0,
-        "length_ok":       1.0 if long_enough >= 8 else 0.0,
+        "length_ok":       1.0 if len(numbered) >= 10 and long_enough >= 10 else 0.0,
     }
 ```
 
@@ -77,7 +83,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions: 标题是否有吸引力 · 风格是否真正差异化（不是换个说法的重复）标题是否有吸引力 · 风格是否真正差异化（不是换个说法的重复）
+Dimensions: 标题是否有吸引力 · 风格是否真正差异化（不是换个说法的重复）
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

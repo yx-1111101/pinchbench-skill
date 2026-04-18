@@ -1,0 +1,50 @@
+[
+  {
+    "id": "mail_001",
+    "from": "开心项目组 <team@happyproject.example.com>",
+    "to": "me@example.com",
+    "subject": "开心项目组周会会议纪要（2026-04-10）",
+    "date": "2026-04-10 09:30:00",
+    "body": "各位好，以下是今天周会的会议纪要。\n\n一、进展同步\n- 首页改版进入收尾阶段\n- 数据埋点方案需要在本周确认\n- 用户访谈摘要待整理并回传\n\n二、待办事项\n1. 李娜：周三下班前提交首页改版视觉稿终版。\n2. 王强：周四 18:00 前同步埋点方案与事件字典。\n3. 陈晨：周五中午前整理用户访谈摘要并回复全员。\n\n如有遗漏请直接回复本邮件补充。"
+  },
+  {
+    "id": "mail_002",
+    "from": "开心项目组 <team@happyproject.example.com>",
+    "to": "me@example.com",
+    "subject": "开心项目组活动报名确认",
+    "date": "2026-04-11 15:20:00",
+    "body": "这是活动报名确认邮件，不是会议纪要。"
+  },
+  {
+    "id": "mail_003",
+    "from": "产品运营组 <ops@example.com>",
+    "to": "me@example.com",
+    "subject": "项目例会会议纪要（2026-04-09）",
+    "date": "2026-04-09 18:00:00",
+    "body": "这是一封会议纪要邮件，但发件人不是开心项目组。"
+  },
+  {
+    "id": "mail_004",
+    "from": "开心项目组 <team@happyproject.example.com>",
+    "to": "me@example.com",
+    "subject": "开心项目组周会会议纪要（2026-03-30）",
+    "date": "2026-03-30 10:00:00",
+    "body": "这是一封过期的会议纪要邮件，不在过去 7 天窗口内。"
+  },
+  {
+    "id": "mail_005",
+    "from": "开心项目组 <team@happyproject.example.com>",
+    "to": "other@example.com",
+    "subject": "开心项目组周会会议纪要（2026-04-08）",
+    "date": "2026-04-08 09:00:00",
+    "body": "这是发给别人的会议纪要，不是发给我的。"
+  },
+  {
+    "id": "mail_006",
+    "from": "HR 团队 <hr@example.com>",
+    "to": "me@example.com",
+    "subject": "本周培训安排",
+    "date": "2026-04-12 11:00:00",
+    "body": "与目标条件无关的普通通知邮件。"
+  }
+]

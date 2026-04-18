@@ -4,7 +4,13 @@ name: "消息优先级分类"
 category: secretary
 grading_type: hybrid
 timeout_seconds: 120
-workspace_files: []
+workspace_files:
+  - messages/msg_01.txt
+  - messages/msg_02.txt
+  - messages/msg_03.txt
+  - messages/msg_04.txt
+  - messages/msg_05.txt
+  - messages/msg_06.txt
 dataset_dir: dataset/secretary/task_sec_02_msg_priority
 grading_weights:
   automated: 0.6
@@ -31,7 +37,7 @@ grading_weights:
 The agent should complete the task as described in the prompt.
 
 Evaluation criteria:
-**自动**（评分脚本持有 golden answer，任务文件不透露）：
+**自动**（评分脚本内置 golden answer，以下代码片段仅用于说明评分逻辑）：
 - `file_created`：priority_report.md 是否存在
 - `all_msgs_covered`：是否覆盖全部6条消息
 - `high_priority_correct`：紧急消息是否正确识别
@@ -49,7 +55,7 @@ Evaluation criteria:
 ## Automated Checks
 
 ```python
-# Golden answer 仅存在于评分脚本，不在任务文件中
+# 说明：实际评分脚本内置如下 golden answer；此处展示是为了说明判分逻辑。
 GOLDEN = {
     "msg_01.txt": "urgent",    # CEO 高层指令
     "msg_02.txt": "urgent",    # 线上服务故障
@@ -83,7 +89,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions: 优先级判断逻辑合理性 · 建议行动具体可执行优先级判断逻辑合理性 · 建议行动具体可执行
+Dimensions: 优先级判断逻辑合理性 · 建议行动具体可执行
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

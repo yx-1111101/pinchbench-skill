@@ -2,10 +2,15 @@
 id: task_twin_06_write_as_me
 name: "调用执行 — 以用户风格创作文章"
 category: digital_twin
-grading_type: llm_judge
+grading_type: hybrid
 timeout_seconds: 180
-workspace_files: []
+workspace_files:
+  - style_guide.md
+  - writing_brief.txt
 dataset_dir: dataset/digital_twin/task_twin_06_write_as_me
+grading_weights:
+  automated: 0.4
+  llm_judge: 0.6
 ---
 
 ## Prompt
@@ -23,14 +28,14 @@ The agent should complete the task as described in the prompt.
 Evaluation criteria:
 **自动**：
 - `file_created`：ghost_article.md 存在
-- `length_ok`：字数在 200-600 字之间
+- `length_ok`：字数在 300-500 字之间
 
 **LLM Judge**（权重更高）：是否体现 style_guide 的写作规则 · 是否有 AI 腔 · 论点是否有数字或案例支撑
 
 ## Grading Criteria
 
 - [ ] file_created: ghost_article.md 存在
-- [ ] length_ok: 字数在 200-600 字之间
+- [ ] length_ok: 字数在 300-500 字之间
 
 ## Automated Checks
 
@@ -45,7 +50,7 @@ def grade(transcript, workspace_path):
     char_count = len(content.replace(" ","").replace("\n",""))
     return {
         "file_created": 1.0,
-        "length_ok":    1.0 if 200 <= char_count <= 600 else 0.0,
+        "length_ok":    1.0 if 300 <= char_count <= 500 else 0.0,
     }
 ```
 
@@ -55,7 +60,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions (from task spec): LLM Judge**（权重更高）：是否体现 style_guide 的写作规则 · 是否有 AI 腔 · 论点是否有数字或案例支撑
+Dimensions: 是否体现 style_guide 的写作规则 · 是否避免 AI 腔 · 论点是否有数字或案例支撑
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

@@ -4,7 +4,8 @@ name: "PDF研报解析与核心数据摘要"
 category: finance
 grading_type: hybrid
 timeout_seconds: 180
-workspace_files: []
+workspace_files:
+  - industry_report.pdf
 dataset_dir: dataset/finance/task_fin_02_report_summary
 grading_weights:
   automated: 0.4

@@ -4,7 +4,8 @@ name: "task_f_04_speech_to_text"
 category: foundation
 grading_type: automated
 timeout_seconds: 90
-workspace_files: []
+workspace_files:
+  - audio.wav
 dataset_dir: dataset/foundation/task_f_04_speech_to_text
 ---
 
@@ -16,16 +17,16 @@ dataset_dir: dataset/foundation/task_f_04_speech_to_text
 
 ## Expected Behavior
 
-The agent should complete the task as described in the prompt.
+The agent should transcribe `audio.wav` accurately. The grader compares `transcript.txt` against **ground-truth phrase groups** derived from the dataset audio (see `dataset/.../golden_transcript.txt` in the repo for reference only; that file is **not** placed in the agent workspace).
 
 Evaluation criteria:
 - `file_created`: transcript.txt 是否存在
-- `has_content`: 是否产出了实质性转录（非空、且非「无法识别/无法处理音频」等拒绝类回复）
+- `keyword_hit_rate`: 转录命中金标关键词组的比例（0–1）
 
 ## Grading Criteria
 
 - [ ] file_created: transcript.txt 是否存在
-- [ ] has_content: 是否产出了实质性转录（非空、且非「无法识别/无法处理音频」等拒绝类回复）
+- [ ] keyword_hit_rate: 命中金标关键词组比例（见 `golden_transcript.txt` / GROUND_TRUTH_KEYWORDS）
 
 ## Automated Checks
 
@@ -35,7 +36,7 @@ def grade(transcript, workspace_path):
     workspace_path = Path(workspace_path)
     f = workspace_path / "transcript.txt"
     if not f.exists():
-        return {"file_created": 0.0, "has_content": 0.0}
+        return {"file_created": 0.0, "keyword_hit_rate": 0.0}
 
     content = f.read_text(encoding="utf-8", errors="ignore").strip()
     c_lower = content.lower()
@@ -45,12 +46,25 @@ def grade(transcript, workspace_path):
         "cannot recognize", "cannot process", "i cannot hear", "i'm unable to",
         "no audio", "cannot transcribe", "unable to process", "can't process the audio",
     ]
-    is_refusal = any((p in content) or (p in c_lower) for p in refusal_phrases)
+    if any((p in content) or (p in c_lower) for p in refusal_phrases):
+        return {"file_created": 1.0, "keyword_hit_rate": 0.0}
 
-    has_content = len(content) > 20 and not is_refusal
+    # Phrases aligned with dataset golden_transcript.txt / audio content
+    GROUND_TRUTH_KEYWORDS = [
+        ("早上好",),
+        ("新的一天",),
+        ("好心情",),
+        ("祝你",),
+    ]
+
+    hits = sum(
+        1 for synonyms in GROUND_TRUTH_KEYWORDS
+        if any(s in content for s in synonyms)
+    )
+    hit_rate = hits / len(GROUND_TRUTH_KEYWORDS)
 
     return {
         "file_created": 1.0,
-        "has_content": 1.0 if has_content else 0.0,
+        "keyword_hit_rate": round(hit_rate, 2),
     }
 ```

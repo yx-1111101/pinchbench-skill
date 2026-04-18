@@ -4,7 +4,9 @@ name: "规则触发告警判断 → 生成通知报告"
 category: finance
 grading_type: automated
 timeout_seconds: 90
-workspace_files: []
+workspace_files:
+  - prices_today.json
+  - watchlist.json
 dataset_dir: dataset/finance/task_fin_09_alert_trigger
 ---
 
@@ -26,7 +28,7 @@ Evaluation criteria:
 - `file_created`：alert_report.md 存在
 - `maotai_alert_triggered`：包含茅台告警（「茅台」+「跌破」或「1700」）
 - `nvda_alert_triggered`：包含英伟达止盈告警（「英伟达」+「止盈」或「50%」或「减仓」）
-- `tencent_no_alert`：腾讯没有被错误触发（提到腾讯但未标记为告警）
+- `tencent_no_alert`：报告提到腾讯，且明确说明腾讯当前未触发告警
 - `alert_count_correct`：只有2条告警（不多不少）
 - `has_distance_info`：包含距离阈值描述（「距」或「还差」或「差」）
 
@@ -36,7 +38,7 @@ Evaluation criteria:
 - [ ] file_created: alert_report.md 存在
 - [ ] maotai_alert_triggered: 包含茅台告警（「茅台」+「跌破」或「1700」）
 - [ ] nvda_alert_triggered: 包含英伟达止盈告警（「英伟达」+「止盈」或「50%」或「减仓」）
-- [ ] tencent_no_alert: 腾讯没有被错误触发（提到腾讯但未标记为告警）
+- [ ] tencent_no_alert: 报告提到腾讯，且明确说明腾讯当前未触发告警
 - [ ] alert_count_correct: 只有2条告警（不多不少）
 - [ ] has_distance_info: 包含距离阈值描述（「距」或「还差」或「差」）
 
@@ -54,17 +56,14 @@ def grade(transcript, workspace_path):
     content = f.read_text(encoding="utf-8")
     maotai_ok  = "茅台" in content and any(w in content for w in ["跌破","1700","成本价"])
     nvda_ok    = "英伟达" in content and any(w in content for w in ["止盈","50%","50％","减仓"])
-    # 腾讯不应出现在告警列表中
-    tencent_section = re.search(r'腾讯.{0,150}', content, re.DOTALL)
-    tencent_safe = not tencent_section or not any(
-        w in tencent_section.group(0) for w in ["⚠","告警","触发","警报","alert"]
+    tencent_section = re.search(r'腾讯.{0,180}', content, re.DOTALL)
+    tencent_safe = bool(tencent_section) and any(
+        w in tencent_section.group(0) for w in ["未触发","无告警","未达到阈值","未满足条件"]
+    ) and not any(
+        w in tencent_section.group(0) for w in ["⚠","警报"]
     )
-    # 告警数量：只应有2条
-    alert_markers = re.findall(r'[⚠🔔触发告警]', content)
-    count_ok = maotai_ok and nvda_ok and not (
-        "腾讯" in content and any(w in content for w in ["⚠","触发","告警"])
-        and re.search(r'腾讯.{0,50}(?:⚠|触发|告警)', content)
-    )
+    alert_lines = [line for line in content.splitlines() if any(w in line for w in ["⚠","触发","告警","警报","alert"])]
+    count_ok = len(alert_lines) == 2 and maotai_ok and nvda_ok and tencent_safe
     has_dist = any(w in content for w in ["距","还差","差","距离","away"])
     return {
         "file_created":         1.0,

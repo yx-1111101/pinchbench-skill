@@ -4,7 +4,8 @@ name: "运营数据解读 → 找异动 + 归因分析"
 category: operator
 grading_type: automated
 timeout_seconds: 180
-workspace_files: []
+workspace_files:
+  - weekly_stats.csv
 dataset_dir: dataset/operator/task_ops_07_data_insight
 ---
 
@@ -28,7 +29,7 @@ Evaluation criteria:
 
 - `file_created`：insight_report.md 存在
 - `identified_xiaohongshu_w04`：提到小红书 W04 的正向异动（包含"小红书"和"W04"或"第4周"）
-- `identified_churn_signal`：提到取关数上升或粉丝质量下降（包含"取关"或"流失"）
+- `identified_churn_signal`：提到取关数上升、粉丝流失，或后期阅读量下滑等质量下降信号
 - `douyin_stable`：提到抖音表现平稳（包含"抖音"和"平稳"或"稳定"）
 - `has_data_evidence`：报告中包含具体数字（至少 3 个数字）
 - `has_suggestions`：包含建议相关词（"建议""应该""可以""推荐"）
@@ -38,7 +39,7 @@ Evaluation criteria:
 - [ ] （Golden answers 基于 dataset 预计算）
 - [ ] file_created: insight_report.md 存在
 - [ ] identified_xiaohongshu_w04: 提到小红书 W04 的正向异动（包含"小红书"和"W04"或"第4周"）
-- [ ] identified_churn_signal: 提到取关数上升或粉丝质量下降（包含"取关"或"流失"）
+- [ ] identified_churn_signal: 提到取关数上升、粉丝流失，或后期阅读量下滑等质量下降信号
 - [ ] douyin_stable: 提到抖音表现平稳（包含"抖音"和"平稳"或"稳定"）
 - [ ] has_data_evidence: 报告中包含具体数字（至少 3 个数字）
 - [ ] has_suggestions: 包含建议相关词（"建议""应该""可以""推荐"）
@@ -57,7 +58,7 @@ def grade(transcript, workspace_path):
                                    "has_data_evidence","has_suggestions"]}
     content = f.read_text(encoding="utf-8")
     has_xhs_w04  = "小红书" in content and bool(re.search(r'W04|第4周|第四周', content))
-    has_churn    = any(w in content for w in ["取关","流失","掉粉","取消关注"])
+    has_churn    = any(w in content for w in ["取关","流失","掉粉","取消关注","阅读量下降","阅读下滑","打开率下降","互动下降"])
     has_douyin   = "抖音" in content and any(w in content for w in ["平稳","稳定","波动不大","变化不大"])
     numbers      = re.findall(r'\d+[\.,]?\d*\s*[%％万千]?', content)
     has_data     = len(numbers) >= 3

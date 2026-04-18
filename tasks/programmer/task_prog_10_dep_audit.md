@@ -4,7 +4,8 @@ name: "依赖安全扫描 + 升级建议"
 category: programmer
 grading_type: automated
 timeout_seconds: 120
-workspace_files: []
+workspace_files:
+  - requirements.txt
 dataset_dir: dataset/programmer/task_prog_10_dep_audit
 ---
 

@@ -4,7 +4,8 @@ name: "质量验证 — 同一问题问两次，验证分身稳定性"
 category: digital_twin
 grading_type: llm_judge
 timeout_seconds: 180
-workspace_files: []
+workspace_files:
+  - persona.json
 dataset_dir: dataset/digital_twin/task_twin_09_consistency
 ---
 
@@ -17,6 +18,20 @@ dataset_dir: dataset/digital_twin/task_twin_09_consistency
 **问题**：「有人想和陈默合作做付费社群，月费99元，目标1000人，对方负责运营，陈默只需每月直播2次。陈默会接受吗？为什么？」
 
 格式：
+```markdown
+# 问题
+<原问题>
+
+## 第一次回答
+<回答内容>
+
+## 第二次回答
+<回答内容>
+
+## 一致性自评
+- 核心判断是否一致：
+- 理由是否一致：
+- 若有差异，差异在哪里：
 ```
 
 ## Expected Behavior
@@ -62,7 +77,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions: 两次核心判断是否一致 · 理由是否基于同样逻辑 · 自评是否诚实准确两次核心判断是否一致 · 理由是否基于同样逻辑 · 自评是否诚实准确
+Dimensions: 两次核心判断是否一致 · 理由是否基于同样逻辑 · 自评是否诚实准确
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

@@ -4,7 +4,9 @@ name: "配置文件读取与修改"
 category: programmer
 grading_type: automated
 timeout_seconds: 120
-workspace_files: []
+workspace_files:
+  - settings.json
+  - deploy.yaml
 dataset_dir: dataset/programmer/task_prog_04_config_rw
 ---
 

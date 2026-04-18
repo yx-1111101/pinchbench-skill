@@ -4,7 +4,8 @@ name: "代码 Diff 审查 → 专业 Code Review 意见"
 category: programmer
 grading_type: hybrid
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - changes.diff
 dataset_dir: dataset/programmer/task_prog_03_code_review
 grading_weights:
   automated: 0.4

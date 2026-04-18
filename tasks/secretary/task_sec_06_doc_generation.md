@@ -4,7 +4,8 @@ name: "结构化文档生成（周报 / 纪要）"
 category: secretary
 grading_type: hybrid
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - work_log.txt
 dataset_dir: dataset/secretary/task_sec_06_doc_generation
 grading_weights:
   automated: 0.5

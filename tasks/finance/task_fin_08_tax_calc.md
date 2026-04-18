@@ -4,7 +4,8 @@ name: "年度个税汇算清缴计算"
 category: finance
 grading_type: automated
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - tax_info.txt
 dataset_dir: dataset/finance/task_fin_08_tax_calc
 ---
 

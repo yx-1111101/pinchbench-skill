@@ -2,10 +2,14 @@
 id: task_ops_02_content_rewrite
 name: "内容二次加工（长文 → 短视频文案 → 朋友圈文案）"
 category: operator
-grading_type: llm_judge
+grading_type: hybrid
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - long_article.txt
 dataset_dir: dataset/operator/task_ops_02_content_rewrite
+grading_weights:
+  automated: 0.5
+  llm_judge: 0.5
 ---
 
 ## Prompt
@@ -32,8 +36,8 @@ Evaluation criteria:
 **自动**：
 - `video_created`：video_script.txt 存在
 - `moments_created`：moments_post.txt 存在
-- `video_length_ok`：视频文案字数在 150-400 字之间
-- `moments_length_ok`：朋友圈文案字数在 50-200 字之间
+- `video_length_ok`：视频文案字数在 200-300 字之间
+- `moments_length_ok`：朋友圈文案字数在 150 字以内
 - `moments_has_hashtag`：朋友圈文案包含 # 话题标签
 - `moments_has_emoji`：朋友圈文案包含 emoji
 
@@ -43,8 +47,8 @@ Evaluation criteria:
 
 - [ ] video_created: video_script.txt 存在
 - [ ] moments_created: moments_post.txt 存在
-- [ ] video_length_ok: 视频文案字数在 150-400 字之间
-- [ ] moments_length_ok: 朋友圈文案字数在 50-200 字之间
+- [ ] video_length_ok: 视频文案字数在 200-300 字之间
+- [ ] moments_length_ok: 朋友圈文案字数在 150 字以内
 - [ ] moments_has_hashtag: 朋友圈文案包含 # 话题标签
 - [ ] moments_has_emoji: 朋友圈文案包含 emoji
 
@@ -68,8 +72,8 @@ def grade(transcript, workspace_path):
     return {
         "video_created":      1.0 if v_exists else 0.0,
         "moments_created":    1.0 if m_exists else 0.0,
-        "video_length_ok":    1.0 if 150 <= v_len <= 400 else 0.0,
-        "moments_length_ok":  1.0 if 50 <= m_len <= 200 else 0.0,
+        "video_length_ok":    1.0 if 200 <= v_len <= 300 else 0.0,
+        "moments_length_ok":  1.0 if m_len <= 150 else 0.0,
         "moments_has_hashtag":1.0 if has_hashtag else 0.0,
         "moments_has_emoji":  1.0 if has_emoji else 0.0,
     }
@@ -81,7 +85,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions: 改写是否忠于原文核心观点 · 钩子是否有吸引力 · 朋友圈是否有个人温度 · 两版风格区分度改写是否忠于原文核心观点 · 钩子是否有吸引力 · 朋友圈是否有个人温度 · 两版风格区分度
+Dimensions: 改写是否忠于原文核心观点 · 钩子是否有吸引力 · 朋友圈是否有个人温度 · 两版风格区分度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

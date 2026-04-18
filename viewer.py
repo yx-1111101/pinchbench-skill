@@ -24,6 +24,7 @@ from lib_agent import slugify_model
 from lib_paths import RESULTS_ROOT, iter_summary_paths
 
 RESULTS_DIR = Path(__file__).parent / "results"
+SKILL_ROOT = Path(__file__).parent
 TASKS_DIR = Path(__file__).parent / "tasks"
 BENCHMARK_SCRIPT = Path(__file__).parent / "scripts" / "benchmark.py"
 RERUN_TMP_ROOT = RESULTS_ROOT / "temp"
@@ -35,6 +36,45 @@ SESSION_TTL_SECONDS = int(os.environ.get("VIEWER_SESSION_TTL", str(60 * 60 * 24 
 SESSION_SECRET = os.environ.get("VIEWER_SESSION_SECRET", AUTH_PASSWORD + "::pinchbench")
 RERUN_JOBS: dict[str, dict] = {}
 RERUN_JOBS_LOCK = threading.Lock()
+_LEGACY_RESULT_FILE_RE = re.compile(r"^\d{4}_.+\.json$")
+
+
+def _looks_like_benchmark_result_json(path: Path) -> bool:
+    if path.name == "summary.json":
+        return True
+    return bool(_LEGACY_RESULT_FILE_RE.match(path.name))
+
+
+def _is_benchmark_result_payload(data: object) -> bool:
+    if not isinstance(data, dict):
+        return False
+    tasks = data.get("tasks")
+    if not isinstance(tasks, list):
+        return False
+    return bool(data.get("run_id") or data.get("model") or data.get("benchmark_version"))
+
+
+def _iter_external_result_json_paths() -> list[Path]:
+    """
+    Discover benchmark result JSONs outside default results/ tree.
+    This supports custom --output-dir runs that write NNNN_<model>.json.
+    """
+    paths: list[Path] = []
+    for path in sorted(SKILL_ROOT.rglob("*.json")):
+        if not path.is_file():
+            continue
+        if ".viewer_backups" in path.parts:
+            continue
+        # Keep default tree handled by existing logic.
+        try:
+            path.resolve().relative_to(RESULTS_DIR.resolve())
+            continue
+        except ValueError:
+            pass
+        if not _looks_like_benchmark_result_json(path):
+            continue
+        paths.append(path)
+    return paths
 
 
 def _sign_session(username: str, expires: int) -> str:
@@ -88,6 +128,10 @@ def _iter_result_summary_paths() -> list[Path]:
     for path in iter_summary_paths():
         if ".viewer_backups" in path.parts:
             continue
+        if path not in seen:
+            paths.append(path)
+            seen.add(path)
+    for path in _iter_external_result_json_paths():
         if path not in seen:
             paths.append(path)
             seen.add(path)
@@ -153,24 +197,24 @@ def _result_json_path_for_run(run_id: str) -> Path | None:
     for path in sorted(RESULTS_DIR.glob(f"{rid}_*.json")):
         if path.is_file():
             return path
-    # Match by run_id / legacy_run_id inside any summary.json
-    for path in iter_summary_paths():
-        if path.name != "summary.json":
-            continue
+    # Match by run_id / legacy_run_id inside discovered result JSON payloads
+    for path in _iter_result_summary_paths():
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
+            continue
+        if not _is_benchmark_result_payload(data):
             continue
         if data.get("run_id") == rid or str(data.get("legacy_run_id", "")) == rid:
             return path
     # Match by model slug (legacy viewer behavior)
     by_model: list[tuple[float, Path]] = []
-    for path in iter_summary_paths():
-        if path.name != "summary.json":
-            continue
+    for path in _iter_result_summary_paths():
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
+            continue
+        if not _is_benchmark_result_payload(data):
             continue
         model = data.get("model")
         if isinstance(model, str) and slugify_model(model) == rid:
@@ -197,7 +241,22 @@ def _transcript_dir_for_run(run_id: str) -> Path | None:
     if target_json.name == "summary.json":
         transcripts_dir = target_json.parent / "transcripts"
         return transcripts_dir if transcripts_dir.is_dir() else None
-    direct = RESULTS_DIR / f"{run_id}_transcripts"
+    legacy_run_id = ""
+    try:
+        payload = json.loads(target_json.read_text(encoding="utf-8"))
+        if isinstance(payload, dict):
+            legacy_run_id = str(payload.get("run_id") or "").strip()
+    except Exception:
+        legacy_run_id = ""
+
+    if not legacy_run_id:
+        legacy_run_id = target_json.stem.split("_", 1)[0]
+
+    sibling = target_json.parent / f"{legacy_run_id}_transcripts"
+    if sibling.is_dir():
+        return sibling
+
+    direct = RESULTS_DIR / f"{legacy_run_id}_transcripts"
     return direct if direct.is_dir() else None
 
 
@@ -210,8 +269,10 @@ def get_runs():
     runs_by_model: dict[tuple[str, str], dict] = {}
     for p in _iter_result_summary_paths():
         try:
-            data = json.loads(p.read_text())
+            data = json.loads(p.read_text(encoding="utf-8"))
         except Exception:
+            continue
+        if not _is_benchmark_result_payload(data):
             continue
         tasks = data.get("tasks", [])
         scored = [t for t in tasks if t.get("grading")]
@@ -252,6 +313,8 @@ def get_run_detail(run_id: str):
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
     except Exception:
+        return None
+    if not _is_benchmark_result_payload(data):
         return None
     model = data.get("model")
     result_key = str(data.get("result_key") or _result_key_from_path(p) or "all")

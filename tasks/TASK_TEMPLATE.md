@@ -1,3 +1,4 @@
+<!--
 ---
 id: task_XX_name
 name: Task Display Name
@@ -271,3 +272,4 @@ Before submitting a new task, verify:
 - [ ] Weights in rubric sum to 100% (if applicable)
 - [ ] Timeout is reasonable for the task complexity
 - [ ] Workspace files are included in `assets/` (if needed)
+-->

@@ -4,7 +4,9 @@ name: "代码重构（上帝函数拆分 + 可读性提升）"
 category: programmer
 grading_type: hybrid
 timeout_seconds: 180
-workspace_files: []
+workspace_files:
+  - order_processor.py
+  - test_order.py
 dataset_dir: dataset/programmer/task_prog_07_refactor
 grading_weights:
   automated: 0.6
@@ -30,7 +32,7 @@ The agent should complete the task as described in the prompt.
 Evaluation criteria:
 **自动**：
 - `tests_pass`：`pytest test_order.py` 全部通过（行为不变）
-- `no_god_function`：不存在超过 35 行的函数
+- `no_god_function`：不存在超过 30 行的函数
 - `function_count_increased`：函数数量 ≥ 5（原来只有1个）
 - `interface_preserved`：仍包含 `def process_order(` 签名
 
@@ -39,7 +41,7 @@ Evaluation criteria:
 ## Grading Criteria
 
 - [ ] tests_pass: `pytest test_order.py` 全部通过（行为不变）
-- [ ] no_god_function: 不存在超过 35 行的函数
+- [ ] no_god_function: 不存在超过 30 行的函数
 - [ ] function_count_increased: 函数数量 ≥ 5（原来只有1个）
 - [ ] interface_preserved: 仍包含 `def process_order(` 签名
 
@@ -71,8 +73,8 @@ def grade(transcript, workspace_path):
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 func_count += 1
-                lines = node.end_lineno - node.lineno
-                if lines > 35: no_god = False
+                lines = node.end_lineno - node.lineno + 1
+                if lines > 30: no_god = False
     except Exception: pass
 
     iface_ok = "def process_order(" in code
@@ -90,7 +92,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions: 拆分是否符合单一职责 · 命名是否语义清晰 · 整体可读性提升程度拆分是否符合单一职责 · 命名是否语义清晰 · 整体可读性提升程度
+Dimensions: 拆分是否符合单一职责 · 命名是否语义清晰 · 整体可读性提升程度
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

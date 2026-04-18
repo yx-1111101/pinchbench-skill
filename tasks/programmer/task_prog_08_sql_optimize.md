@@ -4,7 +4,8 @@ name: "SQL 慢查询分析与优化"
 category: programmer
 grading_type: automated
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - slow_queries.sql
 dataset_dir: dataset/programmer/task_prog_08_sql_optimize
 ---
 
@@ -24,18 +25,18 @@ The agent should complete the task as described in the prompt.
 Evaluation criteria:
 - `file_created`：optimized.sql 存在
 - `report_created`：sql_report.md 存在
-- `q1_uses_index`：Q1 优化版本包含索引相关改写（`INDEX`/`idx_`/去掉了函数包裹字段）
-- `q2_avoids_subquery`：Q2 将相关子查询改为 JOIN（`JOIN` 出现在对应查询中）
-- `q3_adds_limit`：Q3 补充了 `LIMIT` 或分页控制
+- `q1_uses_index`：Q1 对应分段中包含索引相关改写（`INDEX`/`idx_`/避免函数包裹字段）
+- `q2_avoids_subquery`：Q2 对应分段将相关子查询改为 JOIN
+- `q3_adds_limit`：Q3 对应分段补充了 `LIMIT` 或分页控制
 - `explains_bottleneck`：sql_report.md 包含性能瓶颈关键词（「全表扫描」/「子查询」/「索引」/「Full Scan」/「N+1」）
 
 ## Grading Criteria
 
 - [ ] file_created: optimized.sql 存在
 - [ ] report_created: sql_report.md 存在
-- [ ] q1_uses_index: Q1 优化版本包含索引相关改写（`INDEX`/`idx_`/去掉了函数包裹字段）
-- [ ] q2_avoids_subquery: Q2 将相关子查询改为 JOIN（`JOIN` 出现在对应查询中）
-- [ ] q3_adds_limit: Q3 补充了 `LIMIT` 或分页控制
+- [ ] q1_uses_index: Q1 对应分段中包含索引相关改写（`INDEX`/`idx_`/避免函数包裹字段）
+- [ ] q2_avoids_subquery: Q2 对应分段将相关子查询改为 JOIN
+- [ ] q3_adds_limit: Q3 对应分段补充了 `LIMIT` 或分页控制
 - [ ] explains_bottleneck: sql_report.md 包含性能瓶颈关键词（「全表扫描」/「子查询」/「索引」/「Full Scan」/「N+1」）
 
 ## Automated Checks
@@ -50,11 +51,18 @@ def grade(transcript, workspace_path):
     if not opt.exists():
         return {k: 0.0 for k in ["file_created","report_created","q1_uses_index",
                                    "q2_avoids_subquery","q3_adds_limit","explains_bottleneck"]}
-    sql  = opt.read_text(encoding="utf-8").upper()
+    sql  = opt.read_text(encoding="utf-8")
+    sql_upper = sql.upper()
     rpt_text = rpt.read_text(encoding="utf-8") if rpt.exists() else ""
-    q1_ok = bool(re.search(r'IDX_|INDEX|WHERE\s+\w+_DATE\b(?!\s*\()', sql))
-    q2_ok = bool(re.search(r'\bJOIN\b', sql))
-    q3_ok = bool(re.search(r'\bLIMIT\b|\bOFFSET\b|\bFETCH\b', sql))
+    q1_section = re.search(r'(?:--\s*Q1|/\*\s*Q1\s*\*/)(.*?)(?=(?:--\s*Q2|/\*\s*Q2\s*\*/)|\Z)', sql_upper, re.DOTALL)
+    q2_section = re.search(r'(?:--\s*Q2|/\*\s*Q2\s*\*/)(.*?)(?=(?:--\s*Q3|/\*\s*Q3\s*\*/)|\Z)', sql_upper, re.DOTALL)
+    q3_section = re.search(r'(?:--\s*Q3|/\*\s*Q3\s*\*/)(.*?)(?=\Z)', sql_upper, re.DOTALL)
+    q1_text = q1_section.group(1) if q1_section else ""
+    q2_text = q2_section.group(1) if q2_section else ""
+    q3_text = q3_section.group(1) if q3_section else ""
+    q1_ok = bool(re.search(r'IDX_|INDEX|WHERE\s+\w+_DATE\b(?!\s*\()', q1_text))
+    q2_ok = bool(re.search(r'\bJOIN\b', q2_text))
+    q3_ok = bool(re.search(r'\bLIMIT\b|\bOFFSET\b|\bFETCH\b', q3_text))
     btl_kws = ["全表扫描","子查询","索引","full scan","n+1","nested","filesort","using where"]
     btl_ok  = any(k in rpt_text.lower() for k in btl_kws)
     return {

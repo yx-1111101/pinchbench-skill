@@ -1,65 +1,68 @@
-%PDF-1.4
-%âãÏÓ
+%PDF-1.3
+%“Œ‹ž ReportLab Generated PDF document (opensource)
 1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
+<<
+/F1 2 0 R
+>>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+<<
+/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
+>>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]
-   /Resources << /Font << /F1 4 0 R >> >>
-   /Contents 5 0 R >>
+<<
+/Contents 7 0 R /MediaBox [ 0 0 612 792 ] /Parent 6 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
 endobj
 4 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+<<
+/PageMode /UseNone /Pages 6 0 R /Type /Catalog
+>>
 endobj
 5 0 obj
-<< /Length 631 >>
+<<
+/Author (anonymous) /CreationDate (D:20260412225918+08'00') /Creator (anonymous) /Keywords () /ModDate (D:20260412225918+08'00') /Producer (ReportLab PDF Library - \(opensource\)) 
+  /Subject (unspecified) /Title (untitled) /Trapped /False
+>>
+endobj
+6 0 obj
+<<
+/Count 1 /Kids [ 3 0 R ] /Type /Pages
+>>
+endobj
+7 0 obj
+<<
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 656
+>>
 stream
-BT
-/F1 12 Tf
-72 720 Td
-(OpenFriday Bench - Mock Product Report) Tj
-0 -16 Td
-() Tj
-0 -16 Td
-(Product: OpenFriday Bench) Tj
-0 -16 Td
-(Version: 0.1 \(mock\)) Tj
-0 -16 Td
-(Date: 2026-03-11) Tj
-0 -16 Td
-() Tj
-0 -16 Td
-(Summary:) Tj
-0 -16 Td
-(- This is a mock PDF used for parsing benchmarks.) Tj
-0 -16 Td
-(- The goal is to extract readable text into extracted.txt.) Tj
-0 -16 Td
-() Tj
-0 -16 Td
-(Key points:) Tj
-0 -16 Td
-(1\) Foundation tasks validate tool-chain availability.) Tj
-0 -16 Td
-(2\) Content correctness is not graded at foundation layer.) Tj
-0 -16 Td
-(3\) This PDF intentionally contains multiple lines and punctuation.) Tj
-ET
-endstream
+Gas2H>E@5e&;B$9=3T]VBS^`a[Vr"c8k:)OP21?B9N#eWM/9(9ruT2e'hEJtW/;562eV9CQ9a_",^_BSn>V/':BX2mFUP!9$E1_VkPFVdF0Zo014Q,s9=Y"1F>GTUce*$n[d[3niuZSh@J9qKeoL)TEpoZMKDPN]9UZ41ULo-Hje*ZAgqs*@BQ^_c6M2iIbI-%*8^dCmC,<>nc?I@XXBMIrMNE'KR8!k:hrSF"OlW80q[(N(j#PC0lVMYN7DLKO3,<U%"_@u<N9)GT7\H)HXZ#+!8t3crUa2tP>Sf[nQ9\/=LCRXl?XAss<Y(,5goDK)Qqd`@6/NXXYpEDWo++'9^Cd5`iN<4;US5uF@_jR5gUQ+G9]LHj3?NMJHgSF/+a&FR)hQ0OM&#@]Vks.!!K$$MlG*lb%+1bPZpc^gB!Yl[lA`[<c;6E!K\79>NSk/[T]E,`[D67B/YKf)eukIV6+9Ao3s=>9l*J1&Rs9l!&Vj@tFAkU_VlNAHRG4JGjScpT:j"]4<obDUpYRB#?pZ/@9FT0V0gAMn!n4FkS1:/R#qC(M![dKR\-dSARp1su.QQD1i@63rVk3UJ-2Dlda/KT9*s^GN5#:u0g=qO&b8Eh3'mG*D$YSl;90VSnJ_mhAkV6n')Y@CaE;'V*F_9n~>endstream
 endobj
 xref
-0 6
+0 8
 0000000000 65535 f 
-0000000015 00000 n 
-0000000064 00000 n 
-0000000121 00000 n 
-0000000253 00000 n 
-0000000323 00000 n 
+0000000061 00000 n 
+0000000092 00000 n 
+0000000199 00000 n 
+0000000392 00000 n 
+0000000460 00000 n 
+0000000721 00000 n 
+0000000780 00000 n 
 trailer
-<< /Size 6 /Root 1 0 R >>
+<<
+/ID 
+[<c92f26aff5b702dc072c55f61dbc8c4a><c92f26aff5b702dc072c55f61dbc8c4a>]
+% ReportLab generated PDF document -- digest (opensource)
+
+/Info 5 0 R
+/Root 4 0 R
+/Size 8
+>>
 startxref
-1005
+1526
 %%EOF

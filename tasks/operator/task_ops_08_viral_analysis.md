@@ -4,7 +4,8 @@ name: "爆文归因分析（为什么这篇火了）"
 category: operator
 grading_type: llm_judge
 timeout_seconds: 120
-workspace_files: []
+workspace_files:
+  - viral_post_data.txt
 dataset_dir: dataset/operator/task_ops_08_viral_analysis
 ---
 

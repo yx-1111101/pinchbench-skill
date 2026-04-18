@@ -4,7 +4,8 @@ name: "用户画像提炼（从评论中总结谁在看、谁在买）"
 category: operator
 grading_type: hybrid
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - comments.txt
 dataset_dir: dataset/operator/task_ops_10_user_portrait
 grading_weights:
   automated: 0.4

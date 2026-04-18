@@ -4,7 +4,8 @@ name: "财务规划 → 预算制定 + 执行追踪报告"
 category: finance
 grading_type: hybrid
 timeout_seconds: 180
-workspace_files: []
+workspace_files:
+  - company_financials.csv
 dataset_dir: dataset/finance/task_fin_07_budget_plan
 grading_weights:
   automated: 0.5
@@ -28,8 +29,8 @@ The agent should complete the task as described in the prompt.
 Evaluation criteria:
 **自动**：
 - `file_created`：budget_plan.md 存在
-- `identifies_best_month`：识别出11月或1月净利润最高
-- `identifies_worst_month`：识别出12月或2月净利润最低
+- `identifies_best_month`：识别出11月净利润最高
+- `identifies_worst_month`：识别出12月净利润最低
 - `flags_marketing_volatility`：提到市场费用波动（「市场」+「波动」/「增加」/「风险」）
 - `has_q2_forecast`：包含未来预测（「Q2」/「预算」/「建议」）
 
@@ -38,8 +39,8 @@ Evaluation criteria:
 ## Grading Criteria
 
 - [ ] file_created: budget_plan.md 存在
-- [ ] identifies_best_month: 识别出11月或1月净利润最高
-- [ ] identifies_worst_month: 识别出12月或2月净利润最低
+- [ ] identifies_best_month: 识别出11月净利润最高
+- [ ] identifies_worst_month: 识别出12月净利润最低
 - [ ] flags_marketing_volatility: 提到市场费用波动（「市场」+「波动」/「增加」/「风险」）
 - [ ] has_q2_forecast: 包含未来预测（「Q2」/「预算」/「建议」）
 
@@ -54,8 +55,8 @@ def grade(transcript, workspace_path):
         return {k: 0.0 for k in ["file_created","identifies_best_month","identifies_worst_month",
                                    "flags_marketing_volatility","has_q2_forecast"]}
     content = f.read_text(encoding="utf-8")
-    best_ok  = any(w in content for w in ["11月","十一月","1月","一月","57000","55000"])
-    worst_ok = any(w in content for w in ["12月","十二月","2月","二月","20000","22000"])
+    best_ok  = any(w in content for w in ["11月","十一月","2025-11","57000"])
+    worst_ok = any(w in content for w in ["12月","十二月","2025-12","20000"])
     mkt_ok   = "市场" in content and any(w in content for w in ["波动","增加","风险","不稳","异常"])
     q2_ok    = any(w in content for w in ["Q2","q2","二季度","预算","下季度"])
     return {
@@ -73,7 +74,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions: 分析是否有洞见 · 预算建议是否合理且具体 · 成本控制建议是否可落地分析是否有洞见 · 预算建议是否合理且具体 · 成本控制建议是否可落地
+Dimensions: 分析是否有洞见 · 预算建议是否合理且具体 · 成本控制建议是否可落地
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

@@ -2,10 +2,14 @@
 id: task_ops_03_platform_copywriting
 name: "多平台风格文案（同一产品，输出三平台版本）"
 category: operator
-grading_type: llm_judge
+grading_type: hybrid
 timeout_seconds: 150
-workspace_files: []
+workspace_files:
+  - press_release.txt
 dataset_dir: dataset/operator/task_ops_03_platform_copywriting
+grading_weights:
+  automated: 0.5
+  llm_judge: 0.5
 ---
 
 ## Prompt
@@ -38,7 +42,7 @@ Evaluation criteria:
 - `xhs_created`、`weibo_created`、`wechat_created`：三个文件存在
 - `xhs_has_emoji`：小红书版含 emoji
 - `xhs_has_hashtag`：小红书版含话题标签
-- `weibo_length_ok`：微博版字数 ≤ 180 字
+- `weibo_length_ok`：微博版字数 ≤ 140 字
 
 **LLM Judge**：三版平台风格区分度 · 是否准确传达产品信息 · 各版是否符合平台用户语境
 
@@ -47,7 +51,7 @@ Evaluation criteria:
 - [ ] `xhs_created`、`weibo_created`、`wechat_created`：三个文件存在
 - [ ] xhs_has_emoji: 小红书版含 emoji
 - [ ] xhs_has_hashtag: 小红书版含话题标签
-- [ ] weibo_length_ok: 微博版字数 ≤ 180 字
+- [ ] weibo_length_ok: 微博版字数 ≤ 140 字
 
 ## Automated Checks
 
@@ -72,7 +76,7 @@ def grade(transcript, workspace_path):
         "wechat_created": 1.0 if files["wechat"].exists() else 0.0,
         "xhs_has_emoji":  1.0 if has_emoji else 0.0,
         "xhs_has_hashtag":1.0 if has_hashtag else 0.0,
-        "weibo_length_ok":1.0 if weibo_len <= 180 else 0.0,
+        "weibo_length_ok":1.0 if weibo_len <= 140 else 0.0,
     }
 ```
 
@@ -82,7 +86,7 @@ def grade(transcript, workspace_path):
 
 Evaluate the agent's output against the task requirements.
 
-Dimensions: 三版平台风格区分度 · 是否准确传达产品信息 · 各版是否符合平台用户语境三版平台风格区分度 · 是否准确传达产品信息 · 各版是否符合平台用户语境
+Dimensions: 三版平台风格区分度 · 是否准确传达产品信息 · 各版是否符合平台用户语境
 
 **Score 1.0**: Fully meets all requirements with high quality
 **Score 0.75**: Meets most requirements with minor gaps

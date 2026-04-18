@@ -4,7 +4,9 @@ name: "调用执行 — 以用户风格起草消息回复"
 category: digital_twin
 grading_type: llm_judge
 timeout_seconds: 120
-workspace_files: []
+workspace_files:
+  - persona.json
+  - pending_messages.txt
 dataset_dir: dataset/digital_twin/task_twin_05_reply_as_me
 ---
 
