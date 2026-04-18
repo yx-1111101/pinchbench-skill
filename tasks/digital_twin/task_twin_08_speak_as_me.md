@@ -3,7 +3,7 @@ id: task_twin_08_speak_as_me
 name: "调用执行 — 给会议背景，生成用户风格的发言稿"
 category: digital_twin
 grading_type: hybrid
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - style_guide.md
   - meeting_brief.txt

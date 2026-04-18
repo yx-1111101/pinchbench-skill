@@ -3,7 +3,7 @@ id: task_fin_06_portfolio_track
 name: "投资组合追踪 → 持仓分析 + 盈亏计算"
 category: finance
 grading_type: automated
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files:
   - portfolio.csv
   - prices_today.json

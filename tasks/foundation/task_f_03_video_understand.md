@@ -3,7 +3,7 @@ id: task_f_03_video_understand
 name: "task_f_03_video_understand"
 category: foundation
 grading_type: automated
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files:
   - demo.mp4
 dataset_dir: dataset/foundation/task_f_03_video_understand

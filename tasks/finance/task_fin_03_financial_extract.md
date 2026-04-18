@@ -3,7 +3,7 @@ id: task_fin_03_financial_extract
 name: "财报表格 → 关键指标结构化提取"
 category: finance
 grading_type: automated
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - financial_data.xlsx
 dataset_dir: dataset/finance/task_fin_03_financial_extract

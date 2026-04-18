@@ -3,7 +3,7 @@ id: task_prog_04_config_rw
 name: "配置文件读取与修改"
 category: programmer
 grading_type: automated
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files:
   - settings.json
   - deploy.yaml

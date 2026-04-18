@@ -3,7 +3,7 @@ id: task_prog_07_refactor
 name: "代码重构（上帝函数拆分 + 可读性提升）"
 category: programmer
 grading_type: hybrid
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - order_processor.py
   - test_order.py

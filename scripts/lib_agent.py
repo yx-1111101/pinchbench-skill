@@ -578,7 +578,17 @@ def prepare_task_workspace(skill_dir: Path, run_id: str, task: Task, agent_id: s
     for fname, content in saved_bootstrap.items():
         (workspace / fname).write_bytes(content)
 
-    for file_spec in task.workspace_files:
+    for raw_spec in task.workspace_files:
+        # OpenFriday tasks commonly use a YAML list of bare filenames.
+        # Normalize to the legacy dict form so dataset_dir overlay can run.
+        if isinstance(raw_spec, str):
+            file_spec = {"source": raw_spec, "dest": raw_spec}
+        elif isinstance(raw_spec, dict):
+            file_spec = raw_spec
+        else:
+            logger.warning("Skipping invalid workspace_files entry: %r", raw_spec)
+            continue
+
         if "content" in file_spec:
             dest = workspace / file_spec["path"]
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -591,8 +601,9 @@ def prepare_task_workspace(skill_dir: Path, run_id: str, task: Task, agent_id: s
         try:
             dest.write_bytes(source.read_bytes())
         except FileNotFoundError:
-            logger.error("Workspace file not found: %s", source)
-            raise
+            # For Friday tasks, fixtures are typically copied from dataset_dir
+            # in a later overlay step (prepare_friday_workspace).
+            logger.warning("Workspace file not found in assets, continuing: %s", source)
 
     # [MODIFIED] Removed blanket skill copying logic that was here originally.
     # The original code copied all skills from ~/.openclaw/workspace/skills/ into

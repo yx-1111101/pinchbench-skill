@@ -3,7 +3,7 @@ id: task_ops_03_platform_copywriting
 name: "多平台风格文案（同一产品，输出三平台版本）"
 category: operator
 grading_type: hybrid
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - press_release.txt
 dataset_dir: dataset/operator/task_ops_03_platform_copywriting

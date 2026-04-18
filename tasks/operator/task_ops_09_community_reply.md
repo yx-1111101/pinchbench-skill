@@ -3,7 +3,7 @@ id: task_ops_09_community_reply
 name: "社群消息意图识别 + 分类回复"
 category: operator
 grading_type: hybrid
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - messages.txt
 dataset_dir: dataset/operator/task_ops_09_community_reply

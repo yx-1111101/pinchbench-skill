@@ -3,7 +3,7 @@ id: task_fin_05_bill_classify
 name: "账单流水分析 → 收支分类汇总报告"
 category: finance
 grading_type: automated
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - bills.csv
 dataset_dir: dataset/finance/task_fin_05_bill_classify

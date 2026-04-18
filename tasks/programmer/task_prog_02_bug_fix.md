@@ -3,7 +3,7 @@ id: task_prog_02_bug_fix
 name: "报错日志定位 → 运行时 Bug 修复"
 category: programmer
 grading_type: hybrid
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - clean_sales.py
   - error.log

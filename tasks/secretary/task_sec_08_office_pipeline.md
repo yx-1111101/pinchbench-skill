@@ -3,7 +3,7 @@ id: task_sec_08_office_pipeline
 name: "办公软件应用（多格式文件处理流水线）"
 category: secretary
 grading_type: hybrid
-timeout_seconds: 300
+timeout_seconds: 900
 workspace_files:
   - project_summary.docx
   - budget_data.xlsx

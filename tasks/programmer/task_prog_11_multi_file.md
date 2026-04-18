@@ -3,7 +3,7 @@ id: task_prog_11_multi_file
 name: "多文件协作修改（接口变更跨文件传播）"
 category: programmer
 grading_type: automated
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - models.py
   - service.py

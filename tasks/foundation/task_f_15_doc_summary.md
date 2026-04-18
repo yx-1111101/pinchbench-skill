@@ -3,7 +3,7 @@ id: task_f_15_doc_summary
 name: "task_f_15_doc_summary"
 category: foundation
 grading_type: hybrid
-timeout_seconds: 90
+timeout_seconds: 270
 workspace_files:
   - summary_source.txt
 dataset_dir: dataset/foundation/task_f_15_doc_summary

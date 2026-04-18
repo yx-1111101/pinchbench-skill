@@ -3,7 +3,7 @@ id: task_ops_04_layout_brief
 name: "图文排版指令生成（给设计师的排版说明书）"
 category: operator
 grading_type: hybrid
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files:
   - article_content.txt
 dataset_dir: dataset/operator/task_ops_04_layout_brief

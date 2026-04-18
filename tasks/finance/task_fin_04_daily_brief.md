@@ -3,7 +3,7 @@ id: task_fin_04_daily_brief
 name: "多源信息综合 → 每日金融简报"
 category: finance
 grading_type: hybrid
-timeout_seconds: 240
+timeout_seconds: 720
 workspace_files: []
 dataset_dir: dataset/finance/task_fin_04_daily_brief
 grading_weights:

@@ -3,7 +3,7 @@ id: task_ops_01_hotspot_research
 name: "行业热点聚合 → 选题策划报告"
 category: operator
 grading_type: hybrid
-timeout_seconds: 240
+timeout_seconds: 720
 workspace_files: []
 dataset_dir: dataset/operator/task_ops_01_hotspot_research
 grading_weights:

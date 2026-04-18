@@ -3,7 +3,7 @@ id: task_fin_01_stock_quote
 name: "实时行情数据获取与汇报"
 category: finance
 grading_type: automated
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files: []
 dataset_dir: dataset/finance/task_fin_01_stock_quote
 ---

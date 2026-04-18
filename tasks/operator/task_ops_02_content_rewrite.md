@@ -3,7 +3,7 @@ id: task_ops_02_content_rewrite
 name: "内容二次加工（长文 → 短视频文案 → 朋友圈文案）"
 category: operator
 grading_type: hybrid
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - long_article.txt
 dataset_dir: dataset/operator/task_ops_02_content_rewrite

@@ -3,7 +3,7 @@ id: task_twin_09_consistency
 name: "质量验证 — 同一问题问两次，验证分身稳定性"
 category: digital_twin
 grading_type: llm_judge
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - persona.json
 dataset_dir: dataset/digital_twin/task_twin_09_consistency

@@ -3,7 +3,7 @@ id: task_ops_05_video_script
 name: "视频脚本创作（口播向，带镜头指示）"
 category: operator
 grading_type: llm_judge
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - video_brief.txt
 dataset_dir: dataset/operator/task_ops_05_video_script

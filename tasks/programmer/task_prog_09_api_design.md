@@ -3,7 +3,7 @@ id: task_prog_09_api_design
 name: "API 接口设计（OpenAPI 规范生成）"
 category: programmer
 grading_type: hybrid
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - prd.md
 dataset_dir: dataset/programmer/task_prog_09_api_design

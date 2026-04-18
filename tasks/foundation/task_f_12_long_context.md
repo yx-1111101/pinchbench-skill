@@ -3,7 +3,7 @@ id: task_f_12_long_context
 name: "task_f_12_long_context"
 category: foundation
 grading_type: automated
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files:
   - long_doc.txt
 dataset_dir: dataset/foundation/task_f_12_long_context

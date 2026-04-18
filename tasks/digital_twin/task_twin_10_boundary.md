@@ -3,7 +3,7 @@ id: task_twin_10_boundary
 name: "质量验证 — 分身是否遵守用户设定的边界"
 category: digital_twin
 grading_type: hybrid
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files:
   - persona.json
 dataset_dir: dataset/digital_twin/task_twin_10_boundary

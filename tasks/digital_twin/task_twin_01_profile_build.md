@@ -3,7 +3,7 @@ id: task_twin_01_profile_build
 name: "冷启动 — 读用户问卷 → 生成结构化人格档案"
 category: digital_twin
 grading_type: hybrid
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files:
   - onboarding_survey.txt
 dataset_dir: dataset/digital_twin/task_twin_01_profile_build

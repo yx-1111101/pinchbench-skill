@@ -3,7 +3,7 @@ id: task_ops_07_data_insight
 name: "运营数据解读 → 找异动 + 归因分析"
 category: operator
 grading_type: automated
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - weekly_stats.csv
 dataset_dir: dataset/operator/task_ops_07_data_insight

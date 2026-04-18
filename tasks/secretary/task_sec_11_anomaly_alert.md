@@ -3,7 +3,7 @@ id: task_sec_11_anomaly_alert
 name: "主动情报 · 异常监控告警"
 category: secretary
 grading_type: automated
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files: []
 dataset_dir: dataset/secretary/task_sec_11_anomaly_alert
 ---

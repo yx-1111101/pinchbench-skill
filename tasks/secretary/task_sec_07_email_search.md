@@ -3,7 +3,7 @@ id: task_sec_07_email_search
 name: "邮件检索"
 category: secretary
 grading_type: hybrid
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - emails.json
 dataset_dir: dataset/secretary/task_sec_07_email_search

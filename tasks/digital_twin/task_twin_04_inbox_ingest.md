@@ -3,7 +3,7 @@ id: task_twin_04_inbox_ingest
 name: "持续学习 — 多形态碎片输入 → 无感结构化存库"
 category: digital_twin
 grading_type: hybrid
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - inbox.txt
 dataset_dir: dataset/digital_twin/task_twin_04_inbox_ingest

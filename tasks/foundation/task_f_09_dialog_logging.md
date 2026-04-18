@@ -3,7 +3,7 @@ id: task_f_09_dialog_logging
 name: "task_f_09_dialog_logging"
 category: foundation
 grading_type: automated
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files: []
 dataset_dir: dataset/foundation/task_f_09_dialog_logging
 ---

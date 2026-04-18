@@ -3,7 +3,7 @@ id: task_prog_01_script_gen
 name: "自然语言 → Python 脚本生成（HTTP 请求 + 解析 + 错误处理）"
 category: programmer
 grading_type: automated
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files: []
 dataset_dir: dataset/programmer/task_prog_01_script_gen
 ---

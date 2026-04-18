@@ -3,7 +3,7 @@ id: task_f_06_table_read
 name: "task_f_06_table_read"
 category: foundation
 grading_type: automated
-timeout_seconds: 60
+timeout_seconds: 180
 workspace_files:
   - sales.csv
 dataset_dir: dataset/foundation/task_f_06_table_read

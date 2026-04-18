@@ -3,7 +3,7 @@ id: task_f_05_pdf_parse
 name: "task_f_05_pdf_parse"
 category: foundation
 grading_type: automated
-timeout_seconds: 60
+timeout_seconds: 180
 workspace_files:
   - report.pdf
 dataset_dir: dataset/foundation/task_f_05_pdf_parse

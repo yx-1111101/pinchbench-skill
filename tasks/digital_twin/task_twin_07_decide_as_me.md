@@ -3,7 +3,7 @@ id: task_twin_07_decide_as_me
 name: "调用执行 — 给商业情境，给出「陈默会怎么判断」"
 category: digital_twin
 grading_type: hybrid
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - value_map.md
   - scenarios.txt

@@ -3,7 +3,7 @@ id: task_fin_02_report_summary
 name: "PDF研报解析与核心数据摘要"
 category: finance
 grading_type: hybrid
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - industry_report.pdf
 dataset_dir: dataset/finance/task_fin_02_report_summary

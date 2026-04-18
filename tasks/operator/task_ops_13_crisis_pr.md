@@ -3,7 +3,7 @@ id: task_ops_13_crisis_pr
 name: "负面舆情发现与摘要 + 危机公关话术生成"
 category: operator
 grading_type: hybrid
-timeout_seconds: 240
+timeout_seconds: 720
 workspace_files: []
 dataset_dir: dataset/operator/task_ops_13_crisis_pr
 grading_weights:

@@ -3,7 +3,7 @@ id: task_twin_03_value_map
 name: "冷启动 — 历史决策记录 → 总结判断逻辑与边界"
 category: digital_twin
 grading_type: hybrid
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - decision_log.txt
 dataset_dir: dataset/digital_twin/task_twin_03_value_map

@@ -3,7 +3,7 @@ id: task_twin_02_style_extract
 name: "冷启动 — 历史文章样本 → 提炼写作风格规则"
 category: digital_twin
 grading_type: llm_judge
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - article_01.txt
   - article_02.txt

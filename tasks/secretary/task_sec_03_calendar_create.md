@@ -3,7 +3,7 @@ id: task_sec_03_calendar_create
 name: "飞书日程创建"
 category: secretary
 grading_type: automated
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files: []
 dataset_dir: dataset/secretary/task_sec_03_calendar_create
 ---

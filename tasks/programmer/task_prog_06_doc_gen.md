@@ -3,7 +3,7 @@ id: task_prog_06_doc_gen
 name: "技术文档生成（docstring + README）"
 category: programmer
 grading_type: hybrid
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - processor.py
 dataset_dir: dataset/programmer/task_prog_06_doc_gen

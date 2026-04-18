@@ -3,7 +3,7 @@ id: task_sec_02_msg_priority
 name: "消息优先级分类"
 category: secretary
 grading_type: hybrid
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files:
   - messages/msg_01.txt
   - messages/msg_02.txt

@@ -3,7 +3,7 @@ id: task_ops_11_growth_strategy
 name: "粉丝增长策略建议（基于账号诊断数据）"
 category: operator
 grading_type: llm_judge
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files:
   - account_data.txt
 dataset_dir: dataset/operator/task_ops_11_growth_strategy

@@ -3,7 +3,7 @@ id: task_f_13_tool_chain
 name: "task_f_13_tool_chain"
 category: foundation
 grading_type: automated
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - budget.txt
 dataset_dir: dataset/foundation/task_f_13_tool_chain

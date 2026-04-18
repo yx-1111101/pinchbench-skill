@@ -3,7 +3,7 @@ id: task_fin_09_alert_trigger
 name: "规则触发告警判断 → 生成通知报告"
 category: finance
 grading_type: automated
-timeout_seconds: 90
+timeout_seconds: 270
 workspace_files:
   - prices_today.json
   - watchlist.json

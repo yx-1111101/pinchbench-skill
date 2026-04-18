@@ -3,7 +3,7 @@ id: task_fin_07_budget_plan
 name: "财务规划 → 预算制定 + 执行追踪报告"
 category: finance
 grading_type: hybrid
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - company_financials.csv
 dataset_dir: dataset/finance/task_fin_07_budget_plan

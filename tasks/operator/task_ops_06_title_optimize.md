@@ -3,7 +3,7 @@ id: task_ops_06_title_optimize
 name: "标题党优化（同一内容生成10个差异化标题备选）"
 category: operator
 grading_type: hybrid
-timeout_seconds: 90
+timeout_seconds: 270
 workspace_files:
   - original.txt
 dataset_dir: dataset/operator/task_ops_06_title_optimize

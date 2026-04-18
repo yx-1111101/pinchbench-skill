@@ -3,7 +3,7 @@ id: task_sec_04_conflict_manage
 name: "飞书日程冲突处理（自动避让创建）"
 category: secretary
 grading_type: automated
-timeout_seconds: 120
+timeout_seconds: 360
 workspace_files: []
 dataset_dir: dataset/secretary/task_sec_04_conflict_manage
 ---

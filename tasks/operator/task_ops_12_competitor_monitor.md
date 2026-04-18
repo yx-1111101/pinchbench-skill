@@ -3,7 +3,7 @@ id: task_ops_12_competitor_monitor
 name: "竞品内容监控 + 爆文拆解"
 category: operator
 grading_type: hybrid
-timeout_seconds: 300
+timeout_seconds: 900
 workspace_files: []
 dataset_dir: dataset/operator/task_ops_12_competitor_monitor
 grading_weights:

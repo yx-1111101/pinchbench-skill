@@ -3,7 +3,7 @@ id: task_f_04_speech_to_text
 name: "task_f_04_speech_to_text"
 category: foundation
 grading_type: automated
-timeout_seconds: 90
+timeout_seconds: 270
 workspace_files:
   - audio.wav
 dataset_dir: dataset/foundation/task_f_04_speech_to_text

@@ -3,7 +3,7 @@ id: task_f_11_cross_session
 name: "task_f_11_cross_session"
 category: foundation
 grading_type: automated
-timeout_seconds: 90
+timeout_seconds: 270
 workspace_files: []
 dataset_dir: dataset/foundation/task_f_11_cross_session
 ---

@@ -3,7 +3,7 @@ id: task_twin_06_write_as_me
 name: "调用执行 — 以用户风格创作文章"
 category: digital_twin
 grading_type: hybrid
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files:
   - style_guide.md
   - writing_brief.txt

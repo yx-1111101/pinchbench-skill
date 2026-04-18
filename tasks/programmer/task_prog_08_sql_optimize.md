@@ -3,7 +3,7 @@ id: task_prog_08_sql_optimize
 name: "SQL 慢查询分析与优化"
 category: programmer
 grading_type: automated
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - slow_queries.sql
 dataset_dir: dataset/programmer/task_prog_08_sql_optimize

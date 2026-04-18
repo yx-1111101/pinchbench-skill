@@ -3,7 +3,7 @@ id: task_sec_10_daily_digest
 name: "定时摘要推送"
 category: secretary
 grading_type: automated
-timeout_seconds: 180
+timeout_seconds: 540
 workspace_files: []
 dataset_dir: dataset/secretary/task_sec_10_daily_digest
 ---

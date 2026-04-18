@@ -3,7 +3,7 @@ id: task_prog_05_unit_test
 name: "单元测试生成（pytest）"
 category: programmer
 grading_type: automated
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - utils.py
 dataset_dir: dataset/programmer/task_prog_05_unit_test

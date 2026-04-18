@@ -3,7 +3,7 @@ id: task_prog_03_code_review
 name: "代码 Diff 审查 → 专业 Code Review 意见"
 category: programmer
 grading_type: hybrid
-timeout_seconds: 150
+timeout_seconds: 450
 workspace_files:
   - changes.diff
 dataset_dir: dataset/programmer/task_prog_03_code_review
